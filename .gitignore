@@ -120,7 +120,4 @@ dmypy.json
 .idea
 
 # Other specific files
-app/api/logs/*.log
-app/api/opttool/module/*.lp
-app/api/doc/swagger/*.json
-db/*.sqlite
+rec_op_lem_prices/optimization/module/*.lp
