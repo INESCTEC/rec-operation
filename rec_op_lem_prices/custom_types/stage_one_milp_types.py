@@ -7,18 +7,18 @@ from typing import (
 
 # -- INPUTS ------------------------------------------------------------------------------------------------------------
 class BackpackS1Dict(TypedDict):
-		btm_storage: BtmStorage
-		delta_t: float
-		e_c: list[float]
-		e_g: list[float]
-		horizon: int
-		id: str
-		l_buy: list[float]
-		l_extra: float
-		l_market_buy: list[float]
-		l_market_sell: list[float]
-		l_sell: list[float]
-		max_p: float
+	btm_storage: BtmStorage
+	delta_t: float
+	e_c: list[float]
+	e_g: list[float]
+	horizon: int
+	id: str
+	l_buy: list[float]
+	l_extra: float
+	l_market_buy: list[float]
+	l_market_sell: list[float]
+	l_sell: list[float]
+	max_p: float
 
 
 # -- OUTPUTS -----------------------------------------------------------------------------------------------------------

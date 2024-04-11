@@ -19,3 +19,7 @@ def test_solve_individual_milp():
 	results['deg_cost'] = round(results['deg_cost'], 3)
 	for ki, valu in results.items():
 		assert valu == OUTPUTS_S1.get(ki), f'{ki}'
+
+
+if __name__ == '__main__':
+	test_solve_individual_milp()

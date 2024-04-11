@@ -70,3 +70,11 @@ def test_time_intervals():
 	assert time_intervals(horizon=2, delta_t=0.25, func='ceil') == 8
 	assert time_intervals(horizon=2, delta_t=0.25, func='floor') == 8
 	assert time_intervals(horizon=2, delta_t=0.25, func='int') == 8
+
+
+if __name__ == '__main__':
+	test_none_lists()
+	test_dict_none_lists()
+	test_dict_per_param()
+	test_round_up()
+	test_time_intervals()

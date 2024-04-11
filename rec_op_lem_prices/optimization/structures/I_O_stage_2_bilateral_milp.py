@@ -45,7 +45,7 @@ INPUTS_S2_BILATERAL = {
 	},
 	'second_stage': False,  # these inputs are used for testing the second stage of the two-stage approach
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 OUTPUTS_S2_BILATERAL = {
@@ -127,7 +127,7 @@ SINGLE_PRE_INPUTS_S2_BILATERAL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 SINGLE_PRE_OUTPUTS_S2_BILATERAL = {
@@ -283,7 +283,7 @@ SINGLE_POST_INPUTS_S2_BILATERAL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 SINGLE_POST_OUTPUTS_S2_BILATERAL = {
@@ -407,7 +407,7 @@ LOOP_PRE_INPUTS_S2_BILATERAL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 LOOP_PRE_OUTPUTS_S2_BILATERAL_MMR = ([1.05, 1.05, 1.45], 0.0, 3)
@@ -447,7 +447,7 @@ LOOP_POST_INPUTS_S2_BILATERAL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 LOOP_POST_OUTPUTS_S2_BILATERAL_MMR = [1.05, 0.0, 0.0]

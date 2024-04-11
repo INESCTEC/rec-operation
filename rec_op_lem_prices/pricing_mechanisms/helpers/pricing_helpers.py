@@ -34,7 +34,7 @@ def make_offers(meters: MetersDict,
 	logger.debug('Organizing buying and selling offers...')
 
 	# Validate that all arrays have the same size as the total number of market sessions
-	message = lambda l: f'{l} length does not correspond to total number of market sessions'
+	message = lambda prices: f'{prices} length does not correspond to total number of market sessions'
 	assert nr_sessions == len(l_market_buy), message('"l_market_buy"')
 	assert nr_sessions == len(l_market_sell), message('"l_market_sell"')
 	for meter_nae, meter_data in meters.items():

@@ -12,3 +12,7 @@ def test_solve_individual_milp():
 	results['p_extra'] = [round(p, 3) for p in results['p_extra']]
 	for ki, valu in results.items():
 		assert valu == OUTPUTS_IC.get(ki), f'{ki}'
+
+
+if __name__ == '__main__':
+	test_solve_individual_milp()

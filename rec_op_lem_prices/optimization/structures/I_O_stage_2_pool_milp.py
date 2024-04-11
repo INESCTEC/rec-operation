@@ -38,7 +38,7 @@ INPUTS_S2_POOL = {
 	},
 	'second_stage': True,  # these inputs are used for testing the second stage of the two-stage approach
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 OUTPUTS_S2_POOL = {
@@ -104,7 +104,7 @@ INPUTS_S2_DUAL = {
 	},
 	'second_stage': False,   # these inputs are used for testing the individual collective MILP with duals
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 OUTPUTS_S2_DUAL = {
@@ -177,7 +177,7 @@ SINGLE_PRE_INPUTS_S2_POOL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 SINGLE_PRE_OUTPUTS_S2_POOL = {
@@ -323,7 +323,7 @@ SINGLE_POST_INPUTS_S2_POOL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 SINGLE_POST_OUTPUTS_S2_POOL = {
@@ -436,7 +436,7 @@ DUAL_PRE_PRICES_INPUTS = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 DUAL_PRE_PRICES_OUTPUTS = [0.99, 1.0, 1.0]
@@ -465,7 +465,7 @@ DUAL_POST_PRICES_INPUTS = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 DUAL_POST_PRICES_OUTPUTS = [0.0, 2.0, 2.0]
@@ -506,7 +506,7 @@ LOOP_PRE_INPUTS_S2_POOL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 LOOP_PRE_OUTPUTS_S2_POOL_MMR = ([1.0, 1.0, 1.5], 0.0, 3)
@@ -539,7 +539,7 @@ LOOP_POST_INPUTS_S2_POOL = {
 		}
 	},
 	'strict_pos_coeffs': True,
-	'sum_one_coeffs': False
+	'total_share_coeffs': False
 }
 
 LOOP_POST_OUTPUTS_S2_POOL_MMR = [1.0, 0.0, 0.0]

@@ -20,7 +20,7 @@ class BaseBackpackS2PoolDict(TypedDict):
 	l_market_buy: list[float]
 	l_market_sell: list[float]
 	strict_pos_coeffs: bool
-	sum_one_coeffs: bool
+	total_share_coeffs: bool
 
 
 class LoopPreBackpackS2PoolDict(BaseBackpackS2PoolDict):

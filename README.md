@@ -199,7 +199,7 @@ The tool is implemented as a Python library. To install the library in, for exam
     % cd /path/to/root_folder
     ```
 - create the wheel file that will allow you to install the repository as a Python library 
-(make sure you have previously installed Python >= 3.11 in your local computer / server);
+(make sure you have previously installed Python ~= 3.10 in your local computer / server);
 
     ```shell
     % python setup.py bdist_wheel

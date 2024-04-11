@@ -31,3 +31,7 @@ def test_make_offers():
 		[],
 		[]
 	]
+
+
+if __name__ == '__main__':
+	test_make_offers()

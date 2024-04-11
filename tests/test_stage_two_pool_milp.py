@@ -47,3 +47,8 @@ def test_solve_collective_dual_milp():
 	results['obj_value'] = round(results['obj_value'], 3)
 	for ki, valu in results.items():
 		assert valu == OUTPUTS_S2_DUAL.get(ki), f'{ki}'
+
+
+if __name__ == '__main__':
+	test_solve_collective_pool_milp()
+	test_solve_collective_dual_milp()

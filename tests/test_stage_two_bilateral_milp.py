@@ -24,3 +24,7 @@ def test_solve_collective_bilateral_milp():
 	results['c_ind2bilateral_without_p_extra'] = round_cost(results['c_ind2bilateral_without_p_extra'])
 	for ki, valu in results.items():
 		assert valu == OUTPUTS_S2_BILATERAL.get(ki), f'{ki}'
+
+
+if __name__ == '__main__':
+	test_solve_collective_bilateral_milp()

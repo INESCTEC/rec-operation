@@ -38,3 +38,9 @@ def test_substitute_by_measure():
 	# assert that the first element of id 'A' is substituted by 'measure'
 	assert peer_forecasts == [5, 10]
 	assert upac_forecasts == [5, 10]
+
+
+if __name__ == '__main__':
+	test_iter_dt()
+	test_remove_out_of_range()
+	test_substitute_by_measure()

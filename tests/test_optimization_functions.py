@@ -154,3 +154,16 @@ def test_run_post_two_stage_collective_bilateral_milp():
 		r1['c_ind'] = round(r1['c_ind'], 3)
 		for ki, valu in r1.items():
 			assert valu == COLLECTIVE_POST_OUTPUTS_S2_BILATERAL[1][idx].get(ki), f'{ki}'
+
+
+if __name__ == '__main__':
+	test_run_pre_individual_milp()
+	test_run_pre_single_stage_collective_pool_milp()
+	test_run_pre_single_stage_collective_bilateral_milp()
+	test_run_pre_two_stage_collective_pool_milp()
+	test_run_pre_two_stage_collective_bilateral_milp()
+	test_run_post_individual_cost()
+	test_run_post_single_stage_collective_pool_milp()
+	test_run_post_single_stage_collective_bilateral_milp()
+	test_run_post_two_stage_collective_pool_milp()
+	test_run_post_two_stage_collective_bilateral_milp()

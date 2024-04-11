@@ -254,3 +254,14 @@ def test_stop_criterion():
 
 	stop, criterion = stop_criterion(old_prices, stop_new_prices)
 	assert (stop, round(criterion, 3)) == (True, 0.000)
+
+
+if __name__ == '__main__':
+	test_compute_mmr()
+	test_compute_pruned_mmr()
+	test_compute_pruned_sdr()
+	test_compute_sdr()
+	test_do_offers_cross()
+	test_get_accepted_offers()
+	test_compute_crossing_value()
+	test_stop_criterion()

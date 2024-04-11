@@ -148,3 +148,23 @@ def test_loop_pre_bilateral_crossing_value():
 def test_loop_post_bilateral_crossing_value():
 	r = loop_post_bilateral_crossing_value(LOOP_POST_INPUTS_S2_BILATERAL, for_testing=True)
 	assert r == LOOP_POST_OUTPUTS_S2_BILATERAL_CV
+
+
+if __name__ == '__main__':
+	test_vanilla_mmr()
+	test_vanilla_sdr()
+	test_vanilla_crossing_value()
+	test_dual_pre_pool()
+	test_dual_post_pool()
+	test_loop_pre_pool_mmr()
+	test_loop_post_pool_mmr()
+	test_loop_pre_pool_sdr()
+	test_loop_post_pool_sdr()
+	test_loop_pre_pool_crossing_value()
+	test_loop_post_pool_crossing_value()
+	test_loop_pre_bilateral_mmr()
+	test_loop_post_bilateral_mmr()
+	test_loop_pre_bilateral_sdr()
+	test_loop_post_bilateral_sdr()
+	test_loop_pre_bilateral_crossing_value()
+	test_loop_post_bilateral_crossing_value()
