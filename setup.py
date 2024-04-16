@@ -13,7 +13,8 @@ setup(
 		'numpy~=1.26.1',
 		'pandas~=2.1.2',
 		'pulp~=2.7.0',
-		'setuptools~=68.0.0'
+		'setuptools~=68.0.0',
+		'typing-extensions~=4.10.0'
 	],
 	setup_requires=['pytest_runner==6.0.0'],
 	tests_require=['pytest==7.4.2'],
