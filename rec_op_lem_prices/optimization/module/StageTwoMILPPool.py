@@ -231,7 +231,7 @@ class StageTwoMILPPool:
 
 			# Eq. 11
 			self.milp += \
-				lpSum(e_pur[n][t] for n in self.set_meters) == lpSum(e_sale[n][t] for n in self.set_meters), \
+				lpSum(e_sale[n][t] for n in self.set_meters) == lpSum(e_pur[n][t] for n in self.set_meters), \
 				'Market_equilibrium_' + increment
 
 			if self.total_share_coeffs:

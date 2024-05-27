@@ -361,7 +361,7 @@ COLLECTIVE_POST_OUTPUTS_S2_POOL = (
 		'delta_cmet': {'Meter#1': [0.0, 0.0, 0.0], 'Meter#2': [0.0, 0.0, 0.0]},
 		'delta_coeff': {'Meter#1': [0.0, 1.0, 0.0], 'Meter#2': [0.0, 1.0, 1.0]},
 		'delta_slc': {'Meter#1': [1.0, 0.0, 1.0], 'Meter#2': [1.0, 0.0, 0.0]},
-		'delta_sup': {'Meter#1': [0.0, 1.0, 1.0], 'Meter#2': [0.0, 1.0, 1.0]},
+		'delta_sup': {'Meter#1': [0.0, 1.0, 0.0], 'Meter#2': [0.0, 1.0, 1.0]},
 		'dual_prices': [0.0, 2.0, 2.0],
 		'e_alc': {'Meter#1': [0.0, 0.0, 0.0], 'Meter#2': [0.1, 0.0, 0.0]},
 		'e_cmet': {'Meter#1': [-0.9, 0.5, 0.0], 'Meter#2': [0.1, 0.1, 0.1]},

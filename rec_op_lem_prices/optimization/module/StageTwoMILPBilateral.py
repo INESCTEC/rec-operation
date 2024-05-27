@@ -247,7 +247,7 @@ class StageTwoMILPBilateral:
 				increment = f'{n}_{m}_t{t:03d}'
 				# Eq. 11
 				self.milp += \
-					e_pur[n][m][t] == e_sale[m][n][t], \
+					e_sale[n][m][t] == e_pur[m][n][t], \
 					'Market_equilibrium_' + increment
 
 				if all([lg[t] >= 0 for _, lg in self._l_grid[n].items()]):

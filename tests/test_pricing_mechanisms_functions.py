@@ -81,73 +81,73 @@ def test_vanilla_crossing_value():
 
 
 def test_dual_pre_pool():
-	r = dual_pre_pool(DUAL_PRE_PRICES_INPUTS)
-	assert r == DUAL_PRE_PRICES_OUTPUTS
+	prices, _ = dual_pre_pool(DUAL_PRE_PRICES_INPUTS)
+	assert prices == DUAL_PRE_PRICES_OUTPUTS
 
 
 def test_dual_post_pool():
-	r = dual_post_pool(DUAL_POST_PRICES_INPUTS)
-	assert r == DUAL_POST_PRICES_OUTPUTS
+	prices, _ = dual_post_pool(DUAL_POST_PRICES_INPUTS)
+	assert prices == DUAL_POST_PRICES_OUTPUTS
 
 
 def test_loop_pre_pool_mmr():
 	r = loop_pre_pool_mmr(LOOP_PRE_INPUTS_S2_POOL, for_testing=True)
-	assert r == LOOP_PRE_OUTPUTS_S2_POOL_MMR
+	assert r[:-1] == LOOP_PRE_OUTPUTS_S2_POOL_MMR
 
 
 def test_loop_post_pool_mmr():
 	r = loop_post_pool_mmr(LOOP_POST_INPUTS_S2_POOL, for_testing=True)
-	assert r == LOOP_POST_OUTPUTS_S2_POOL_MMR
+	assert r[0] == LOOP_POST_OUTPUTS_S2_POOL_MMR
 
 
 def test_loop_pre_pool_sdr():
 	r = loop_pre_pool_sdr(LOOP_PRE_INPUTS_S2_POOL, for_testing=True)
-	assert r == LOOP_PRE_OUTPUTS_S2_POOL_SDR
+	assert r[:-1] == LOOP_PRE_OUTPUTS_S2_POOL_SDR
 
 
 def test_loop_post_pool_sdr():
 	r = loop_post_pool_sdr(LOOP_POST_INPUTS_S2_POOL, for_testing=True)
-	assert r == LOOP_POST_OUTPUTS_S2_POOL_SDR
+	assert r[0] == LOOP_POST_OUTPUTS_S2_POOL_SDR
 
 
 def test_loop_pre_pool_crossing_value():
 	r = loop_pre_pool_crossing_value(LOOP_PRE_INPUTS_S2_POOL, for_testing=True)
-	assert r == LOOP_PRE_OUTPUTS_S2_POOL_CV
+	assert r[:-1] == LOOP_PRE_OUTPUTS_S2_POOL_CV
 
 
 def test_loop_post_pool_crossing_value():
 	r = loop_post_pool_crossing_value(LOOP_POST_INPUTS_S2_POOL, for_testing=True)
-	assert r == LOOP_POST_OUTPUTS_S2_POOL_CV
+	assert r[0] == LOOP_POST_OUTPUTS_S2_POOL_CV
 
 
 def test_loop_pre_bilateral_mmr():
 	r = loop_pre_bilateral_mmr(LOOP_PRE_INPUTS_S2_BILATERAL, for_testing=True)
-	assert r == LOOP_PRE_OUTPUTS_S2_BILATERAL_MMR
+	assert r[:-1] == LOOP_PRE_OUTPUTS_S2_BILATERAL_MMR
 
 
 def test_loop_post_bilateral_mmr():
 	r = loop_post_bilateral_mmr(LOOP_POST_INPUTS_S2_BILATERAL, for_testing=True)
-	assert r == LOOP_POST_OUTPUTS_S2_BILATERAL_MMR
+	assert r[0] == LOOP_POST_OUTPUTS_S2_BILATERAL_MMR
 
 
 def test_loop_pre_bilateral_sdr():
 	r = loop_pre_bilateral_sdr(LOOP_PRE_INPUTS_S2_BILATERAL, for_testing=True)
-	assert r == LOOP_PRE_OUTPUTS_S2_BILATERAL_SDR
+	assert r[:-1] == LOOP_PRE_OUTPUTS_S2_BILATERAL_SDR
 
 
 def test_loop_post_bilateral_sdr():
 	r = loop_post_bilateral_sdr(LOOP_POST_INPUTS_S2_BILATERAL, for_testing=True)
-	assert r == LOOP_POST_OUTPUTS_S2_BILATERAL_SDR
+	assert r[0] == LOOP_POST_OUTPUTS_S2_BILATERAL_SDR
 
 
 def test_loop_pre_bilateral_crossing_value():
 	r = loop_pre_bilateral_crossing_value(LOOP_PRE_INPUTS_S2_BILATERAL, for_testing=True)
-	assert r == LOOP_PRE_OUTPUTS_S2_BILATERAL_CV
+	assert r[:-1] == LOOP_PRE_OUTPUTS_S2_BILATERAL_CV
 
 
 def test_loop_post_bilateral_crossing_value():
 	r = loop_post_bilateral_crossing_value(LOOP_POST_INPUTS_S2_BILATERAL, for_testing=True)
-	assert r == LOOP_POST_OUTPUTS_S2_BILATERAL_CV
+	assert r[0] == LOOP_POST_OUTPUTS_S2_BILATERAL_CV
 
 
 if __name__ == '__main__':

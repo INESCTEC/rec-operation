@@ -18,12 +18,17 @@ from rec_op_lem_prices.pricing_mechanisms.module.PricingMechanisms import (
 from rec_op_lem_prices.custom_types.pricing_mechanims_types import OffersList
 from rec_op_lem_prices.custom_types.pricing_mechanisms_functions_types import RequestParams
 from rec_op_lem_prices.custom_types.stage_two_milp_bilateral_types import (
+	CollectivePostOutputsS2BilateralDict,
+	CollectivePreOutputsS2BilateralDict,
 	LoopPostBackpackS2BilateralDict,
 	LoopPreBackpackS2BilateralDict,
 )
 from rec_op_lem_prices.custom_types.stage_two_milp_pool_types import (
+	CollectivePostOutputsS2PoolDict,
+	CollectivePreOutputsS2PoolDict,
 	LoopPostBackpackS2PoolDict,
-	LoopPreBackpackS2PoolDict
+	LoopPreBackpackS2PoolDict,
+	OutputsS2PoolDict
 )
 from loguru import logger
 from typing import Callable, Union
@@ -119,7 +124,7 @@ def vanilla_crossing_value(buys: OffersList,
 
 
 # -- DUALS -------------------------------------------------------------------------------------------------------------
-def dual_pre_pool(backpack: LoopPreBackpackS2PoolDict) -> list[float]:
+def dual_pre_pool(backpack: LoopPreBackpackS2PoolDict) -> (list[float], OutputsS2PoolDict):
 	"""
 	Function to compute the LEM prices' array from the market equilibrium constraint shadow values.
 	A standalone collective MILP is run, where the costs with energy for the whole REC are computed,
@@ -170,7 +175,7 @@ def dual_pre_pool(backpack: LoopPreBackpackS2PoolDict) -> list[float]:
 			or not; this means that if a meter has surplus and it is injecting in the grid, that surplus must totally
 			shared with all members of the REC
 	}
-	:return: array of float with the LEM prices computed;
+	:return: array of float with the LEM prices computed, plus the full MILP outputs' structure;
 		the order of the values in the array follows the same order of the provided data
 	"""
 	logger.info('Running a pre-delivery standalone pool MILP to retrieve dual LEM prices...')
@@ -189,10 +194,10 @@ def dual_pre_pool(backpack: LoopPreBackpackS2PoolDict) -> list[float]:
 
 	logger.info('Running a pre-delivery standalone pool MILP to retrieve dual LEM prices... DONE!')
 
-	return dual_prices
+	return dual_prices, results
 
 
-def dual_post_pool(backpack: LoopPostBackpackS2PoolDict) -> list[float]:
+def dual_post_pool(backpack: LoopPostBackpackS2PoolDict) -> (list[float], OutputsS2PoolDict):
 	"""
 	Function to compute the LEM prices' array from the market equilibrium constraint shadow values.
 	A standalone collective MILP is run, where the costs with energy for the whole REC are computed,
@@ -229,7 +234,7 @@ def dual_post_pool(backpack: LoopPostBackpackS2PoolDict) -> list[float]:
 			or not; this means that if a meter has surplus and it is injecting in the grid, that surplus must totally
 			shared with all members of the REC
 	}
-	:return: array of float with the LEM prices computed;
+	:return: array of float with the LEM prices computed, plus the full MILP outputs' structure;
 		the order of the values in the array follows the same order of the provided data
 	"""
 	logger.info('Running a post-delivery standalone pool MILP to retrieve dual LEM prices...')
@@ -249,7 +254,7 @@ def dual_post_pool(backpack: LoopPostBackpackS2PoolDict) -> list[float]:
 
 	logger.info('Running a post-delivery standalone pool MILP to retrieve dual LEM prices... DONE!')
 
-	return dual_prices
+	return dual_prices, results
 
 
 # -- PRE-DELIVERY LOOPS ------------------------------------------------------------------------------------------------
@@ -257,7 +262,13 @@ def _common_loop(backpack: LoopPreBackpackS2PoolDict,
                  pricing_func: Callable,
                  optimization_func: Callable,
                  for_testing: False,
-                 **kwargs: Unpack[RequestParams]) -> tuple[list[float], Union[float, None], int]:
+                 **kwargs: Unpack[RequestParams]) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				Union[CollectivePreOutputsS2PoolDict, CollectivePreOutputsS2BilateralDict]
+		):
 	"""
 	Iterative overarching algorithm for the pre-delivery timeframe
 	:param backpack: data for running the two-stage MILP
@@ -266,12 +277,14 @@ def _common_loop(backpack: LoopPreBackpackS2PoolDict,
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param kwargs: necessary flags or numeric parameters that are required by the passed func
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
 		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	# START THE LOOP
 	logger.info('Starting loop...')
@@ -297,6 +310,7 @@ def _common_loop(backpack: LoopPreBackpackS2PoolDict,
 	best_l_lem = l_lem.copy()
 	criterion = None
 	break_while = False  # used when Euclidean distance criterion is met, to break out of inner loop
+	best_milp_results = None
 
 	# Print the initial prices considered
 	dynamic_size = lambda val: int(3 - len(str(int(val))))
@@ -309,6 +323,7 @@ def _common_loop(backpack: LoopPreBackpackS2PoolDict,
 		if of2 < best_of2:
 			best_of2 = of2
 			best_l_lem = l_lem.copy()
+			best_milp_results = milp_results
 		logger.info(f'--- O.F. value: ({round(of2, 3)}) | Best O.F. value: ({round(best_of2, 3)})')
 
 		# Test the Euclidean distance stopping criterion, between all old prices and the new prices
@@ -378,13 +393,19 @@ def _common_loop(backpack: LoopPreBackpackS2PoolDict,
 	# When a stopping criterion is met, return the computed prices
 	logger.success(f'Stopped algorithm at iteration {it} with stopping criterion = {criterion}.')
 
-	return best_l_lem, criterion, it
+	return best_l_lem, criterion, it, best_milp_results
 
 
 def loop_pre_pool_mmr(backpack: LoopPreBackpackS2PoolDict,
                       for_testing=False,
                       pruned=True,
-                      divisor=2.0) -> tuple[list[float], Union[float, None], int]:
+                      divisor=2.0) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				CollectivePreOutputsS2PoolDict
+		):
 	"""
 	Function to compute the LEM prices' array iteratively through the application of the two-stage MILP,
 	under a pool market structure, and the MMR mechanism.
@@ -446,12 +467,14 @@ def loop_pre_pool_mmr(backpack: LoopPreBackpackS2PoolDict,
 	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
 	Note: must be non-negative and > 0.0
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
-		- stopping criterion computed through the euclidean distance between price arrays;
+		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	assert 0.0 <= divisor, 'Please provide a divisor value greater than or equal to 0.0.'
 	pricing_func = compute_pruned_mmr if pruned else compute_mmr
@@ -466,7 +489,13 @@ def loop_pre_pool_mmr(backpack: LoopPreBackpackS2PoolDict,
 def loop_pre_pool_sdr(backpack: LoopPreBackpackS2PoolDict,
                       for_testing=False,
                       pruned=True,
-                      compensation=0.0) -> tuple[list[float], Union[float, None], int]:
+                      compensation=0.0) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				CollectivePreOutputsS2PoolDict
+		):
 	"""
 	Function to compute the LEM prices' array iteratively through the application of the two-stage ,
 	under a pool market structure, and the SDR mechanism.
@@ -525,12 +554,14 @@ def loop_pre_pool_sdr(backpack: LoopPreBackpackS2PoolDict,
 	:param pruned: if True, consider only offers that would be cleared on a market pool
 	:param compensation: float between 0 and 1 that establishes the relative compensation
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
-		- stopping criterion computed through the euclidean distance between price arrays;
+		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	assert 0.0 <= compensation <= 1.0, 'Please provide a compensation value between 0.0 and 1.0.'
 	pricing_func = compute_pruned_sdr if pruned else compute_sdr
@@ -544,7 +575,13 @@ def loop_pre_pool_sdr(backpack: LoopPreBackpackS2PoolDict,
 
 def loop_pre_pool_crossing_value(backpack: LoopPreBackpackS2PoolDict,
                                  for_testing=False,
-                                 small_increment=0.0) -> tuple[list[float], Union[float, None], int]:
+                                 small_increment=0.0) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				CollectivePreOutputsS2PoolDict
+		):
 	"""
 	Function to compute the LEM prices' array iteratively through the application of the two-stage MILP,
 	under a pool market structure, and the clearing of a market pool with the buying and selling resulting offers.
@@ -602,12 +639,14 @@ def loop_pre_pool_crossing_value(backpack: LoopPreBackpackS2PoolDict,
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param small_increment: float to add to buy offers' value and subtract from sell offers' value
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
-		- stopping criterion computed through the euclidean distance between price arrays;
+		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	pricing_func = compute_crossing_value
 	opt_func = run_pre_two_stage_collective_pool_milp
@@ -621,7 +660,13 @@ def loop_pre_pool_crossing_value(backpack: LoopPreBackpackS2PoolDict,
 def loop_pre_bilateral_mmr(backpack: LoopPreBackpackS2BilateralDict,
                            for_testing=False,
                            pruned=True,
-                           divisor=2.0) -> tuple[list[float], Union[float, None], int]:
+                           divisor=2.0) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				CollectivePreOutputsS2BilateralDict
+		):
 	"""
 	Function to compute the LEM prices' array iteratively through the application of the two-stage MILP,
 	under a p2p market structure, based on bilateral contracts, and the MMR mechanism.
@@ -684,12 +729,14 @@ def loop_pre_bilateral_mmr(backpack: LoopPreBackpackS2BilateralDict,
 	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
 	Note: must be non-negative and > 0.0
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
-		- stopping criterion computed through the euclidean distance between price arrays;
+		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	assert 0.0 <= divisor, 'Please provide a divisor value greater than or equal to 0.0.'
 	pricing_func = compute_pruned_mmr if pruned else compute_mmr
@@ -704,7 +751,13 @@ def loop_pre_bilateral_mmr(backpack: LoopPreBackpackS2BilateralDict,
 def loop_pre_bilateral_sdr(backpack: LoopPreBackpackS2BilateralDict,
                            for_testing=False,
                            pruned=True,
-                           compensation=0.0) -> tuple[list[float], Union[float, None], int]:
+                           compensation=0.0) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				CollectivePreOutputsS2BilateralDict
+		):
 	"""
 	Function to compute the LEM prices' array iteratively through the application of the two-stage ,
 	under a p2p market structure, based on bilateral contracts, and the SDR mechanism.
@@ -764,12 +817,14 @@ def loop_pre_bilateral_sdr(backpack: LoopPreBackpackS2BilateralDict,
 	:param pruned: if True, consider only offers that would be cleared on a market pool
 	:param compensation: float between 0 and 1 that establishes the relative compensation
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
-		- stopping criterion computed through the euclidean distance between price arrays;
+		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	assert 0.0 <= compensation <= 1.0, 'Please provide a compensation value between 0.0 and 1.0.'
 	pricing_func = compute_pruned_sdr if pruned else compute_sdr
@@ -783,7 +838,13 @@ def loop_pre_bilateral_sdr(backpack: LoopPreBackpackS2BilateralDict,
 
 def loop_pre_bilateral_crossing_value(backpack: LoopPreBackpackS2BilateralDict,
                                       for_testing=False,
-                                      small_increment=0.0) -> tuple[list[float], Union[float, None], int]:
+                                      small_increment=0.0) \
+		-> (
+				list[float],
+				Union[float, None],
+				int,
+				CollectivePreOutputsS2BilateralDict
+		):
 	"""
 	Function to compute the LEM prices' array iteratively through the application of the two-stage MILP,
 	under a p2p market structure, based on bilateral contracts, and the clearing of a market pool with
@@ -843,12 +904,14 @@ def loop_pre_bilateral_crossing_value(backpack: LoopPreBackpackS2BilateralDict,
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param small_increment: float to add to buy offers' value and subtract from sell offers' value
 	:return: tuple with:
-		- array of float with the LEM prices computed;
+		- array of float with the LEM prices computed for the best iteration,
+			i.e. the iteration with the best objective function value;
 			the order of the values in the array follows the same order of the provided data
-		- stopping criterion computed through the euclidean distance between price arrays;
+		- stopping criterion computed through the Euclidean distance between price arrays;
 			returned as float if the criterion is met;
 			returned as None if the criterion wasn't met, but loop broke by reaching the maximum iteration number
 		- number of iterations performed
+		- full MILP outputs' structure of the solution with the best objective function value
 	"""
 	pricing_func = compute_crossing_value
 	opt_func = run_pre_two_stage_collective_bilateral_milp
@@ -864,7 +927,11 @@ def _common_highway(backpack: LoopPreBackpackS2PoolDict,
                     pricing_func: Callable,
                     optimization_func: Callable,
                     for_testing: False,
-                    **kwargs: Unpack[RequestParams]) -> list[float]:
+                    **kwargs: Unpack[RequestParams]) \
+		-> (
+				list[float],
+				Union[CollectivePostOutputsS2PoolDict, CollectivePostOutputsS2BilateralDict]
+		):
 	"""
 	Iterative overarching algorithm for the post-delivery timeframe
 	:param backpack: data for running the two-stage MILP
@@ -872,8 +939,10 @@ def _common_highway(backpack: LoopPreBackpackS2PoolDict,
 	:param optimization_func: optimization function to be applied
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param kwargs: necessary flags or numeric parameters that are required by the passed func
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	# START THE LOOP
 	logger.info('Starting loop...')
@@ -939,13 +1008,17 @@ def _common_highway(backpack: LoopPreBackpackS2PoolDict,
 	# When a stopping criterion is met, return the computed prices
 	logger.success(f'Stopped algorithm.')
 
-	return l_lem
+	return l_lem, milp_results
 
 
 def loop_post_pool_mmr(backpack: LoopPostBackpackS2PoolDict,
                        for_testing=False,
                        pruned=True,
-                       divisor=2.0) -> list[float]:
+                       divisor=2.0) \
+		-> (
+				list[float],
+				CollectivePostOutputsS2PoolDict
+		):
 	"""
 	Function to compute the LEM prices' array through the application of the two-stage MILP,
 	under a pool market structure, and the MMR mechanism.
@@ -988,8 +1061,10 @@ def loop_post_pool_mmr(backpack: LoopPostBackpackS2PoolDict,
 	and the most valuable selling offer; By default, the value is 2.0, making the price equidistant from both offers;
 	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
 	Note: must be non-negative and > 0.0
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	assert 0.0 <= divisor, 'Please provide a divisor value greater than or equal to 0.0.'
 	pricing_func = compute_pruned_mmr if pruned else compute_mmr
@@ -1004,7 +1079,11 @@ def loop_post_pool_mmr(backpack: LoopPostBackpackS2PoolDict,
 def loop_post_pool_sdr(backpack: LoopPostBackpackS2PoolDict,
                        for_testing=False,
                        pruned=True,
-                       compensation=0.0) -> list[float]:
+                       compensation=0.0) \
+		-> (
+				list[float],
+				CollectivePostOutputsS2PoolDict
+		):
 	"""
 	Function to compute the LEM prices' array through the application of the two-stage MILP,
 	under a pool market structure, and the SDR mechanism.
@@ -1044,8 +1123,10 @@ def loop_post_pool_sdr(backpack: LoopPostBackpackS2PoolDict,
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param pruned: if True, consider only offers that would be cleared on a market pool
 	:param compensation: float between 0 and 1 that establishes the relative compensation
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	assert 0.0 <= compensation <= 1.0, 'Please provide a compensation value between 0.0 and 1.0.'
 	pricing_func = compute_pruned_sdr if pruned else compute_sdr
@@ -1059,7 +1140,11 @@ def loop_post_pool_sdr(backpack: LoopPostBackpackS2PoolDict,
 
 def loop_post_pool_crossing_value(backpack: LoopPostBackpackS2PoolDict,
                                   for_testing=False,
-                                  small_increment=0.0) -> list[float]:
+                                  small_increment=0.0) \
+		-> (
+				list[float],
+				CollectivePostOutputsS2PoolDict
+		):
 	"""
 	Function to compute the LEM prices' array through the application of the two-stage MILP,
 	under a pool market structure, and the clearing of a market pool with the buying and selling resulting offers.
@@ -1098,8 +1183,10 @@ def loop_post_pool_crossing_value(backpack: LoopPostBackpackS2PoolDict,
 	}
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param small_increment: float to add to buy offers' value and subtract from sell offers' value
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	pricing_func = compute_crossing_value
 	opt_func = run_post_two_stage_collective_pool_milp
@@ -1113,7 +1200,11 @@ def loop_post_pool_crossing_value(backpack: LoopPostBackpackS2PoolDict,
 def loop_post_bilateral_mmr(backpack: LoopPostBackpackS2BilateralDict,
                             for_testing=False,
                             pruned=True,
-                            divisor=2.0) -> list[float]:
+                            divisor=2.0) \
+		-> (
+				list[float],
+				CollectivePostOutputsS2BilateralDict
+		):
 	"""
 	Function to compute the LEM prices' array through the application of the two-stage MILP,
 	under a p2p market structure, based on bilateral contracts, and the MMR mechanism.
@@ -1156,8 +1247,10 @@ def loop_post_bilateral_mmr(backpack: LoopPostBackpackS2BilateralDict,
 	and the most valuable selling offer; By default, the value is 2.0, making the price equidistant from both offers;
 	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
 	Note: must be non-negative and > 0.0
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	assert 0.0 <= divisor, 'Please provide a divisor value greater than or equal to 0.0.'
 	pricing_func = compute_pruned_mmr if pruned else compute_mmr
@@ -1172,7 +1265,11 @@ def loop_post_bilateral_mmr(backpack: LoopPostBackpackS2BilateralDict,
 def loop_post_bilateral_sdr(backpack: LoopPostBackpackS2BilateralDict,
                             for_testing=False,
                             pruned=True,
-                            compensation=0.0) -> list[float]:
+                            compensation=0.0) \
+		-> (
+				list[float],
+				CollectivePostOutputsS2BilateralDict
+		):
 	"""
 	Function to compute the LEM prices' array through the application of the two-stage MILP,
 	under a p2p market structure, based on bilateral contracts, and the SDR mechanism.
@@ -1212,8 +1309,10 @@ def loop_post_bilateral_sdr(backpack: LoopPostBackpackS2BilateralDict,
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param pruned: if True, consider only offers that would be cleared on a market pool
 	:param compensation: float between 0 and 1 that establishes the relative compensation
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	assert 0.0 <= compensation <= 1.0, 'Please provide a compensation value between 0.0 and 1.0.'
 	pricing_func = compute_pruned_sdr if pruned else compute_sdr
@@ -1227,7 +1326,11 @@ def loop_post_bilateral_sdr(backpack: LoopPostBackpackS2BilateralDict,
 
 def loop_post_bilateral_crossing_value(backpack: LoopPostBackpackS2BilateralDict,
                                        for_testing=False,
-                                       small_increment=0.0) -> list[float]:
+                                       small_increment=0.0) \
+		-> (
+				list[float],
+				CollectivePostOutputsS2BilateralDict
+		):
 	"""
 	Function to compute the LEM prices' array through the application of the two-stage MILP,
 	under a p2p market structure, based on bilateral contracts, and the clearing of a market pool with
@@ -1267,8 +1370,10 @@ def loop_post_bilateral_crossing_value(backpack: LoopPostBackpackS2BilateralDict
 	}
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
 	:param small_increment: float to add to buy offers' value and subtract from sell offers' value
-	:return: array of float with the LEM prices computed;
-		the order of the values in the array follows the same order of the provided data
+	:return: tuple with:
+		- array of float with the LEM prices computed;
+			the order of the values in the array follows the same order of the provided data
+		- full MILP outputs' structure of the solution
 	"""
 	pricing_func = compute_crossing_value
 	opt_func = run_post_two_stage_collective_bilateral_milp
