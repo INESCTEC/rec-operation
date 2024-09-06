@@ -108,7 +108,7 @@ class StageTwoMILPPool:
 			# Unbound the restriction regarding stage 1 cost for single stage runs
 			self._c_ind = {k: 1000 for k in self.set_meters}
 
-		# Unpack batterias information
+		# Unpack batteries information
 		for n in self.set_meters:
 			meter_btm_storage = self._meters_data[n]['btm_storage']
 			if meter_btm_storage is not None:

@@ -109,7 +109,7 @@ class StageTwoMILPBilateral:
 			# Unbound the restriction regarding stage 1 cost for single stage runs
 			self._c_ind = {k: 1000 for k in self.set_meters}
 
-		# Unpack batterias information
+		# Unpack batteries information
 		for n in self.set_meters:
 			meter_btm_storage = self._meters_data[n]['btm_storage']
 			if meter_btm_storage is not None:
@@ -566,12 +566,10 @@ class StageTwoMILPBilateral:
 		original_b_name = \
 			lambda v_name: [ori_b for ori_b in btm_storage_ids if b_matchd[ori_b] + '_' in v_name][0]
 		alt_original_n_name = \
-			lambda v_name, v_group: \
-				[ori_n for ori_n in self.set_meters if v_group + matchd[ori_n] in v.name][0]
+			lambda v_name, v_group: [ori_n for ori_n in self.set_meters if v_group + matchd[ori_n] in v.name][0]
 		original_m_name = \
-			lambda v_name, v_group: \
-				[ori_m for ori_m in self.set_meters if (matchd[ori_m] in v_name) and
-				 (matchd[ori_m] != alt_original_n_name(v_name, v_group))][0]
+			lambda v_name, v_group: [ori_m for ori_m in self.set_meters if (matchd[ori_m] in v_name) and
+									 (matchd[ori_m] != alt_original_n_name(v_name, v_group))][0]
 
 		# Associate the values of the variables with the respective outputs' structure
 		for v in self.milp.variables():
@@ -714,7 +712,7 @@ if __name__ == '__main__':
 	milp.solve_milp()
 	assert milp.status == 'Optimal'
 
-	# Assert the correct ouputs
+	# Assert the correct outputs
 	results = milp.generate_outputs()
 	round_cost = lambda x: {meter_id: round(cost, 3) for meter_id, cost in x.items()}
 	results['obj_value'] = round(results['obj_value'], 3)

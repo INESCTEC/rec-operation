@@ -262,7 +262,7 @@ def compute_sdr(buys: OffersList, sells: OffersList, compensation=0.0) -> float:
 		result = (min_buy * (max_sell + l_compensation)) / \
 		         ((min_buy - max_sell - l_compensation) * sdr + max_sell + l_compensation)
 	else:
-		raise ValuError('A negative SDR was computed. Please contact the developers.')
+		raise ValueError('A negative SDR was computed. Please contact the developers.')
 
 	logger.debug(f'Computing pool price through SDR... DONE!')
 	return result

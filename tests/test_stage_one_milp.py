@@ -14,7 +14,7 @@ def test_solve_individual_milp():
 	milp.solve_milp()
 	assert milp.status == 'Optimal'
 
-	# Assert the correct ouputs
+	# Assert the correct outputs
 	results = milp.generate_outputs()
 	results['deg_cost'] = round(results['deg_cost'], 3)
 	for ki, valu in results.items():

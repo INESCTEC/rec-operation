@@ -14,7 +14,7 @@ def test_solve_collective_bilateral_milp():
 	milp.solve_milp()
 	assert milp.status == 'Optimal'
 
-	# Assert the correct ouputs
+	# Assert the correct outputs
 	results = milp.generate_outputs()
 	round_cost = lambda x: {meter_id: round(cost, 3) for meter_id, cost in x.items()}
 	results['obj_value'] = round(results['obj_value'], 3)

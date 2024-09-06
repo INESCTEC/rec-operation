@@ -1,7 +1,6 @@
 from rec_op_lem_prices.custom_types.pricing_mechanims_types import OffersList
 from rec_op_lem_prices.custom_types.pricing_mechanisms_helpers_types import MetersDict
 from loguru import logger
-from typing import Union
 
 
 def make_offers(meters: MetersDict,

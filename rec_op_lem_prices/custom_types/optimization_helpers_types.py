@@ -6,7 +6,7 @@ from typing import (
 
 
 # general_helpers.py
-ForecastsList: TypeAlias = list[float]
+ForecastsList: TypeAlias = list[dict]
 
 
 class SinglePeerMeasuresDict(TypedDict):

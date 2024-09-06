@@ -185,7 +185,7 @@ def test_do_offers_cross():
 
 
 def test_get_accepted_offers():
-	expected_lenghts = {
+	expected_lengths = {
 		'Example01': (3, 3),
 		'Example01a': (3, 3),
 		'Example01b': (3, 3),
@@ -210,7 +210,7 @@ def test_get_accepted_offers():
 		nr_buys = len(accepted_buys)
 		nr_sells = len(accepted_sells)
 		# assert that the right values are computed
-		assert (nr_buys, nr_sells) == expected_lenghts.get(example.__name__)
+		assert (nr_buys, nr_sells) == expected_lengths.get(example.__name__)
 
 
 def test_compute_crossing_value():

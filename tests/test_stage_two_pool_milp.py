@@ -16,7 +16,7 @@ def test_solve_collective_pool_milp():
 	milp.solve_milp()
 	assert milp.status == 'Optimal'
 
-	# Assert the correct ouputs
+	# Assert the correct outputs
 	results = milp.generate_outputs()
 	round_cost = lambda x: {meter_id: round(cost, 3) for meter_id, cost in x.items()}
 	results['c_ind2pool'] = round_cost(results['c_ind2pool'])
@@ -37,7 +37,7 @@ def test_solve_collective_dual_milp():
 	milp.solve_milp()
 	assert milp.status == 'Optimal'
 
-	# Assert the correct ouputs
+	# Assert the correct outputs
 	results = milp.generate_outputs()
 	round_cost = lambda x: {meter_id: round(cost, 3) for meter_id, cost in x.items()}
 	results['c_ind2pool'] = round_cost(results['c_ind2pool'])

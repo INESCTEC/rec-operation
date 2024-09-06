@@ -302,7 +302,7 @@ SINGLE_POST_OUTPUTS_S2_BILATERAL = {
 	'e_sale_bilateral': {'Meter#1': {'Meter#2': [0.1, 0.0, 0.0]},
 	                     'Meter#2': {'Meter#1': [0.0, 0.0, 0.0]}},
 	'e_slc_bilateral': {'Meter#1': {'Meter#2': [0.0, 0.0, 0.0]},
-                        'Meter#2': {'Meter#1': [0.1, 0.0, 0.0]}},
+						'Meter#2': {'Meter#1': [0.1, 0.0, 0.0]}},
 	'e_sup_market': {'Meter#1': [0.0, 0.0, 0.0], 'Meter#2': [0.0, 0.0, 0.0]},
 	'e_sup_retail': {'Meter#1': [0.0, 0.5, 0.0], 'Meter#2': [0.0, 0.1, 0.1]},
 	'e_sur_market': {'Meter#1': [0.8, 0.0, 0.0], 'Meter#2': [0.0, 0.0, 0.0]},

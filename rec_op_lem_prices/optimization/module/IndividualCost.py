@@ -39,11 +39,10 @@ def calculate_individual_cost(backpack: BackpackIndCostDict) -> OutputsIndCostDi
 
 	# Assert that all arrays provided have the same length (i.e., operation horizon)
 	baseline_length = len(_l_buy)
-	assertion_error_message = lambda v: f'length of "{v}" does not match the lenght of "l_buy"'
-	assert len(_l_sell) == baseline_length, assertion_error_message("l_sell")
-	assert len(_l_market_buy) == baseline_length, assertion_error_message("l_market_buy")
-	assert len(_l_market_sell) == baseline_length, assertion_error_message("l_market_sell")
-	assert len(_e_met) == baseline_length, assertion_error_message("e_met")
+	assert len(_l_sell) == baseline_length, 'length of "l_sell" does not match the length of "l_buy"'
+	assert len(_l_market_buy) == baseline_length, 'length of "l_market_buy" does not match the length of "l_buy"'
+	assert len(_l_market_sell) == baseline_length, 'length of "l_market_sell" does not match the length of "l_buy"'
+	assert len(_e_met) == baseline_length, 'length of "e_met" does not match the length of "l_buy"'
 
 	logger.debug(f'-- calculating the individual cost for Meter id: {meter_id}...')
 
@@ -73,9 +72,9 @@ def calculate_individual_cost(backpack: BackpackIndCostDict) -> OutputsIndCostDi
 	p_extra = p_extra_array.tolist()
 
 	# Calculate the cost with energy
-	c_ind_array = e_sup_retail * _l_buy - e_sur_retail * _l_sell \
-	              + e_sup_market * _l_market_buy - e_sur_market * _l_market_sell \
-	              + p_extra_array * _l_extra
+	c_ind_array = (e_sup_retail * _l_buy - e_sur_retail * _l_sell
+				   + e_sup_market * _l_market_buy - e_sur_market * _l_market_sell
+				   + p_extra_array * _l_extra)
 	c_ind = c_ind_array.sum()
 
 	logger.debug(f'-- calculating the individual cost for Meter id: {meter_id}... DONE!')
