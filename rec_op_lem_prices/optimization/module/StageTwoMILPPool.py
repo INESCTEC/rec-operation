@@ -24,6 +24,9 @@ from rec_op_lem_prices.custom_types.stage_two_milp_pool_types import (
 )
 from loguru import logger
 from pulp import (
+	CPLEX_CMD,
+	HiGHS_CMD,
+	listSolvers,
 	LpBinary,
 	LpMinimize,
 	LpProblem,
@@ -450,15 +453,21 @@ class StageTwoMILPPool:
 		self.milp.writeLP(lp_file)
 
 		# Set the solver to be called
-		if self.solver == 'CBC':
+		if self.solver == 'CBC' and 'PULP_CBC_CMD' in listSolvers(onlyAvailable=True):
 			self.milp.setSolver(pulp.PULP_CBC_CMD(msg=False, timeLimit=self.timeout, gapRel=self.mipgap))
 
-		elif self.solver == 'GUROBI':
-			# self.milp.setSolver(pulp.GUROBI_CMD(msg=True, timeLimit=self.timeout, mip=self.mipgap))
-			self.milp.setSolver(GUROBI_CMD(msg=False))
+		elif self.solver == 'GUROBI' and 'GUROBI_CMD' in listSolvers(onlyAvailable=True):
+			self.milp.setSolver(GUROBI_CMD(msg=False, timeLimit=self.timeout, mip=self.mipgap))
+
+		elif self.solver == 'CPLEX' and 'CPLEX_CMD' in listSolvers(onlyAvailable=True):
+			self.milp.setSolver(CPLEX_CMD(msg=False, timeLimit=self.timeout, gapRel=self.mipgap))
+
+		elif self.solver == 'HiGHS' and 'HiGHS_CMD' in listSolvers(onlyAvailable=True):
+			self.milp.setSolver(HiGHS_CMD(msg=False, timeLimit=self.timeout, gapRel=self.mipgap, threads=1))
 
 		else:
-			raise ValueError
+			raise ValueError(f'{self.solver}_CMD not available in puLP; '
+							 f'please install the required solver or try a different one')
 
 		logger.debug('-- defining the collective (pool) MILP problem... DONE!')
 
