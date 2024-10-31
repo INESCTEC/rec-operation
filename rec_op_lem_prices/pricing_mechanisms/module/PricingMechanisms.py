@@ -338,7 +338,7 @@ def get_accepted_offers(buys: OffersList, sells: OffersList) -> tuple[OffersList
 	b = 0
 	last_rescued = 'BOTH'
 	while (s < len(sellers)) and (b < len(buyers)):
-		if sellers[s]['value'] >= buyers[b]['value']:
+		if sellers[s]['value'] > buyers[b]['value']:
 			break
 		elif buyers[b]['amount'] < sellers[s]['amount']:
 			screened_buys.append(buys[b])
