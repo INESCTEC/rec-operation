@@ -105,7 +105,7 @@ class StageTwoMILPBilateral:
 		self._e_c = dict_per_param(self._meters_data, 'e_c')
 		self._e_g = dict_per_param(self._meters_data, 'e_g')
 		self._p_meter_max = dict_per_param(self._meters_data, 'max_p')
-		self._big_m = 2 * max(self._p_meter_max.values())
+		self._big_m = 10 * max(self._p_meter_max.values())
 		if self.second_stage:
 			self._c_ind = dict_per_param(self._meters_data, 'c_ind')
 		else:

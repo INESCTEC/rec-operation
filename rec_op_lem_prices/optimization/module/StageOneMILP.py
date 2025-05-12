@@ -58,7 +58,7 @@ class StageOneMILP:
 		self._soc_max = {}  # maximum state of charge [%]
 		self._init_e_bat = {}  # initial energy content of the batteries [kWh]
 		self._deg_cost = {}  # estimated degradation cost of the batteries of n [€/kWh]
-		self._big_m = 2 * self._p_meter_max  # a very big number [kWh]
+		self._big_m = 10 * self._p_meter_max  # a very big number [kWh]
 		self._l_extra = backpack.get('l_extra')  # (fictitious) very high cost of violating p_meter_max
 		# MILP variables
 		self.milp = None  # for storing the MILP formulation
@@ -300,7 +300,6 @@ class StageOneMILP:
 			step_nr = None
 			if not re.search('dummy', v.name):
 				step_nr = int(v.name[-3:])
-
 			if re.search('e_sup_retail', v.name):
 				outputs['e_sup_retail'][step_nr] = v.varValue
 			elif re.search('e_sur_retail', v.name):

@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
 	name='rec_op_lem_prices',
 	packages=find_packages(include=['rec_op_lem_prices', 'rec_op_lem_prices.*']),
-	version='0.2.5',
+	version='0.2.6',
 	description='REC Management Tool for optimal operation of REC and LEM price definition.',
 	author='ricardo.emanuel@inesctec.pt',
 	install_requires=[
@@ -13,7 +13,8 @@ setup(
 		'numpy~=1.26.1',
 		'pandas~=2.1.2',
 		'pulp~=2.7.0',
-		'setuptools~=68.0.0',
+		'scikit-learn~=1.4.1.post1',
+		'setuptools~=70.0.0',
 		'typing-extensions~=4.10.0'
 	],
 	setup_requires=['pytest_runner==6.0.0'],
