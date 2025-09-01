@@ -65,6 +65,15 @@ class StageTwoMILPBilateral:
 		self._l_lem = backpack.get('l_lem')  # price for LEM transactions [€/kWh]
 		self._big_m = None  # a very big number [kWh]
 		self._l_extra = backpack.get('l_extra')  # (fictitious) very high cost of violating p_meter_max
+		self._trip_ev = {}  # EV energy consumption, in kWh
+		self._min_energy_storage_ev = {}  # Minimum stored energy to be guaranteed for vehicle ev at CPE n, in kWh
+		self._battery_capacity_ev = {}  # The battery energy capacity of vehicle ev at CPE n, in kWh
+		self._eff_bc_ev = {}  # Charging efficiency of vehicle ev at CPE n, between 0 and 1
+		self._eff_bd_ev = {}  # Discharging efficiency of vehicle ev at CPE n, between 0 and 1
+		self._init_e_ev = {}  # the initial energy content of the EV, in kWh
+		self._pmax_c_ev = {}  # Maximum power charge of vehicle ev at CPE n, in kW
+		self._pmax_d_ev = {}  # Maximum power discharge of vehicle ev at CPE n, in kW
+		self._bin_ev = {}  # Whether a vehicle ev at CPE n is plugged-in or not (if plugged
 		# MILP variables
 		self.milp = None  # for storing the MILP formulation
 		self.solver = solver  # solver chosen for the MILP
@@ -76,6 +85,7 @@ class StageTwoMILPBilateral:
 		self.time_series = None  # for a range of time intervals
 		self.set_meters = None  # set with Meters' ID
 		self.sets_btm_storage = {}  # stores the Meter's Btm storage assets' ids
+		self.sets_btm_ev = {}  # stores the Meter's Btm EVs ids
 		self._meters_data = backpack.get('meters')  # data from Meters
 		self.second_stage = backpack.get('second_stage')  # indicates if second stage (True) or single stage (False)
 		self.strict_pos_coeffs = backpack.get('strict_pos_coeffs')  # no negative coefficients if True
@@ -128,6 +138,25 @@ class StageTwoMILPBilateral:
 			else:
 				self.sets_btm_storage[n] = []
 
+		# Unpack EVs information
+		for n in self.set_meters:
+			meter_btm_ev = self._meters_data[n].get('btm_evs')
+			if meter_btm_ev is not None:
+				self.sets_btm_ev[n] = list(meter_btm_ev.keys())
+				self._trip_ev[n] = {ev: meter_btm_ev[ev]['trip_ev'] for ev in self.sets_btm_ev[n]}
+				self._min_energy_storage_ev[n] = {ev: meter_btm_ev[ev]['min_energy_storage_ev'] for ev in
+												  self.sets_btm_ev[n]}
+				self._battery_capacity_ev[n] = {ev: meter_btm_ev[ev]['battery_capacity_ev'] for ev in
+												self.sets_btm_ev[n]}
+				self._eff_bc_ev[n] = {ev: meter_btm_ev[ev]['eff_bc_ev'] for ev in self.sets_btm_ev[n]}
+				self._eff_bd_ev[n] = {ev: meter_btm_ev[ev]['eff_bd_ev'] for ev in self.sets_btm_ev[n]}
+				self._init_e_ev[n] = {ev: meter_btm_ev[ev]['init_e_ev'] for ev in self.sets_btm_ev[n]}
+				self._pmax_c_ev[n] = {ev: meter_btm_ev[ev]['pmax_c_ev'] for ev in self.sets_btm_ev[n]}
+				self._pmax_d_ev[n] = {ev: meter_btm_ev[ev]['pmax_d_ev'] for ev in self.sets_btm_ev[n]}
+				self._bin_ev[n] = {ev: meter_btm_ev[ev]['bin_ev'] for ev in self.sets_btm_ev[n]}
+			else:
+				self.sets_btm_ev[n] = []
+
 		# Initialize the decision variables
 		# energy supplied to n from its retailer [kWh]
 		e_sup_retail = dict_none_lists(self.time_intervals, self.set_meters)
@@ -169,6 +198,13 @@ class StageTwoMILPBilateral:
 		e_bd = {n: dict_none_lists(self.time_intervals, self.sets_btm_storage[n]) for n in self.set_meters}
 		# when True allows charge, else discharge
 		delta_bc = {n: dict_none_lists(self.time_intervals, self.sets_btm_storage[n]) for n in self.set_meters}
+		# EV decision variables
+		# energy stored in ev [kWh]
+		ev_stored = {n: dict_none_lists(self.time_intervals, self.sets_btm_ev[n]) for n in self.set_meters}
+		# power charge of ev [kW]
+		p_ev_charge = {n: dict_none_lists(self.time_intervals, self.sets_btm_ev[n]) for n in self.set_meters}
+		# power discharge of ev [kW]
+		p_ev_discharge = {n: dict_none_lists(self.time_intervals, self.sets_btm_ev[n]) for n in self.set_meters}
 		if self.strict_pos_coeffs:
 			# auxiliary binary variable for imposing positive allocation coefficients
 			delta_coeff = dict_none_lists(self.time_intervals, self.set_meters)
@@ -215,6 +251,11 @@ class StageTwoMILPBilateral:
 				e_pur[n][m][t] = LpVariable('e_pur_' + increment, lowBound=0)
 				e_sale[n][m][t] = LpVariable('e_sale_' + increment, lowBound=0)
 				e_slc[n][m][t] = LpVariable('e_slc_' + increment, lowBound=0)
+			for ev in self.sets_btm_ev[n]:
+				increment = f'{n}_{ev}_t{t:03d}'
+				ev_stored[n][ev][t] = LpVariable('ev_stored_' + increment, lowBound=0)
+				p_ev_charge[n][ev][t] = LpVariable('p_ev_charge_' + increment, lowBound=0)
+				p_ev_discharge[n][ev][t] = LpVariable('p_ev_discharge_' + increment, lowBound=0)
 
 		# Eq. 10: Objective Function
 		objective = lpSum(
@@ -275,7 +316,8 @@ class StageTwoMILPBilateral:
 			# Eq. 13
 			self.milp += \
 				e_cmet[n][t] == self._e_c[n][t] - self._e_g[n][t] \
-				+ lpSum(e_bc[n][b][t] - e_bd[n][b][t] for b in self.sets_btm_storage[n]), \
+				+ lpSum(e_bc[n][b][t] - e_bd[n][b][t] for b in self.sets_btm_storage[n]) + lpSum(p_ev_charge[n][ev][t] * self._delta_t - p_ev_discharge[n][ev][t] * self._delta_t
+				 for ev in self.sets_btm_ev[n]), \
 				'C_met_' + increment
 
 			# Eq. 14
@@ -451,6 +493,40 @@ class StageTwoMILPBilateral:
 					self.milp += \
 						e_bd[n][b][t] * 1 / self._delta_t <= self._p_max[n][b] * (1 - delta_bc[n][b][t]), \
 						'Discharge_rate_limit' + increment
+			#EVs constraints
+			for ev in self.sets_btm_ev[n]:
+				increment = f'{n}_{ev}_t{t:03d}'
+				# Eq. 41
+				if t == 0:
+					self.milp += ev_stored[n][ev][t] == self._init_e_ev[n][ev] + self._eff_bc_ev[n][ev] * \
+								 p_ev_charge[n][ev][t] \
+								 * self._delta_t - (1 / self._eff_bd_ev[n][ev]) * p_ev_discharge[n][ev][
+									 t] * self._delta_t \
+								 - self._trip_ev[n][ev][t], \
+								 'EV_balance_' + increment
+				else:
+					self.milp += ev_stored[n][ev][t] == ev_stored[n][ev][t - 1] + self._eff_bc_ev[n][ev] * \
+								 p_ev_charge[n][ev][
+									 t] * \
+								 self._delta_t - (1 / self._eff_bd_ev[n][ev]) * p_ev_discharge[n][ev][t] * \
+								 self._delta_t - self._trip_ev[n][ev][t], \
+								 'EV_balance_' + increment
+
+				# Eq. 42
+				self.milp += (1 / self._eff_bd_ev[n][ev]) * p_ev_discharge[n][ev][t] <= self._pmax_d_ev[n][ev] * \
+							 self._bin_ev[n][ev][t], 'EV_Discharging_limit_' + increment
+
+				# Eq. 43
+				self.milp += self._eff_bc_ev[n][ev] * p_ev_charge[n][ev][t] <= self._pmax_c_ev[n][ev] * \
+							 self._bin_ev[n][ev][t], 'EV_Charging_limit_' + increment
+
+				# Eq. 44
+				self.milp += ev_stored[n][ev][t] <= self._battery_capacity_ev[n][
+					ev], 'EV_Max_capacity_' + increment
+
+				# Eq. 45
+				self.milp += ev_stored[n][ev][t] >= self._min_energy_storage_ev[n][
+					ev], 'EV_Min_capacity_' + increment
 
 		for n in self.set_meters:
 			increment = f'{n}'
@@ -558,6 +634,13 @@ class StageTwoMILPBilateral:
 		outputs['e_bc'] = {n: dict_none_lists(self.time_intervals, self.sets_btm_storage[n]) for n in self.set_meters}
 		outputs['e_bd'] = {n: dict_none_lists(self.time_intervals, self.sets_btm_storage[n]) for n in self.set_meters}
 		outputs['delta_bc'] = {n: dict_none_lists(self.time_intervals, self.sets_btm_storage[n]) for n in self.set_meters}
+		for n_meter in self.set_meters:
+			meter_btm_ev = self._meters_data[n_meter].get('btm_evs') #Check if there are EVs
+			if meter_btm_ev is not None:
+				outputs['ev_stored'] = {n: dict_none_lists(self.time_intervals, self.sets_btm_ev[n]) for n in self.set_meters}
+				outputs['p_ev_charge'] = {n: dict_none_lists(self.time_intervals, self.sets_btm_ev[n]) for n in self.set_meters}
+				outputs['p_ev_discharge'] = {n: dict_none_lists(self.time_intervals, self.sets_btm_ev[n]) for n in self.set_meters}
+				break
 		if self.strict_pos_coeffs:
 			outputs['delta_coeff'] = dict_none_lists(self.time_intervals, self.set_meters)
 		if self.total_share_coeffs:
@@ -579,6 +662,16 @@ class StageTwoMILPBilateral:
 		original_m_name = \
 			lambda v_name, v_group: [ori_m for ori_m in self.set_meters if (matchd[ori_m] in v_name) and
 									 (matchd[ori_m] != alt_original_n_name(v_name, v_group))][0]
+
+		# EVs______________________________________________________________________________________________
+		# Required when vars include "-" since puLP converts it to "_"
+		btm_ev_ids = [bid for bids in [v for _, v in self.sets_btm_ev.items()] for bid in bids]
+		matchd = {key: key.replace('-', '_') for key in self.set_meters}
+		ev_matchd = {key: key.replace('-', '_') for key in btm_ev_ids}
+
+		original_ev_name = \
+			lambda v_name: [ori_ev for ori_ev in btm_ev_ids if ev_matchd[ori_ev] + '_' in v_name][0]
+		# EVs______________________________________________________________________________________________
 
 		# Associate the values of the variables with the respective outputs' structure
 		for v in self.milp.variables():
@@ -662,6 +755,19 @@ class StageTwoMILPBilateral:
 				n = original_n_name(v.name)
 				b = original_b_name(v.name)
 				outputs['delta_bc'][n][b][step_nr] = v.varValue
+			# EVs
+			elif re.search(f'ev_stored_', v.name):
+				n = original_n_name(v.name)
+				ev = original_ev_name(v.name)
+				outputs['ev_stored'][n][ev][step_nr] = v.varValue
+			elif re.search(f'p_ev_charge_', v.name):
+				n = original_n_name(v.name)
+				ev = original_ev_name(v.name)
+				outputs['p_ev_charge'][n][ev][step_nr] = v.varValue
+			elif re.search(f'p_ev_discharge_', v.name):
+				n = original_n_name(v.name)
+				ev = original_ev_name(v.name)
+				outputs['p_ev_discharge'][n][ev][step_nr] = v.varValue
 
 		# Include other individual cost metrics
 		outputs['c_ind2bilateral'] = {n: None for n in self.set_meters}
