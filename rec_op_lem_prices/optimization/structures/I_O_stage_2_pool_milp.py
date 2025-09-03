@@ -17,7 +17,8 @@ INPUTS_S2_POOL = {
 					'init_e': 0.0,
 					'p_max': 1.0,
 					'soc_max': 100.0,
-					'soc_min': 0.0}
+					'soc_min': 0.0
+				}
 			},
 			'c_ind': -0.391,
 			'e_c': [0.0, 0.5, 0.0],

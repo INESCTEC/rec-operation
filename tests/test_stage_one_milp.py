@@ -20,6 +20,5 @@ def test_solve_individual_milp():
 	for ki, valu in results.items():
 		assert valu == OUTPUTS_S1.get(ki), f'{ki}'
 
-
 if __name__ == '__main__':
 	test_solve_individual_milp()

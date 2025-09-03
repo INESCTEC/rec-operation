@@ -101,20 +101,20 @@ def _plot_pool(buy_offers: OffersList, sell_offers: OffersList, l_p2p: float, ex
 	return
 
 
-def compute_mmr(buys: OffersList, sells: OffersList, divisor=2.0) -> float:
+def compute_mmr(buys: OffersList, sells: OffersList, divider=0.5) -> float:
 	"""
 	Function to compute the mid-market rate (MMR);
-	If the divisor is set to a value different from 2, the function is broadened and should be considered as the more
+	If the divider is set to a value different from 2, the function is broadened and should be considered as the more
 	general intermediary-market rate (IMR);
 	If any of the selling offers has a higher value than any of the buying offers,
 	the pool crossing value is returned instead
 	:param buys: list of buying offers, each with the structure {'origin': str, 'amount': float, 'value': float};
 	amount is given in kWh, value in €/kWh and origin is an identification id, unique to each offer
 	:param sells: same structure but for selling offers
-	:param divisor: the value establishing how close the LEM price is positioned from the least valuable buying offer
-	and the most valuable selling offer; By default, the value is 2.0, making the price equidistant from both offers;
+	:param divider: the value establishing how close the LEM price is positioned from the least valuable buying offer
+	and the most valuable selling offer; By default, the value is 0.5, making the price equidistant from both offers;
 	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
-	Note: must be non-negative and > 0.0
+	Note: must be non-negative and between 0.0 and 1.0
 	:return: calculated price for transactions
 	"""
 	logger.debug('Computing pool price through MMR...')
@@ -150,32 +150,33 @@ def compute_mmr(buys: OffersList, sells: OffersList, divisor=2.0) -> float:
 		               'Returning the pools\' cross value.')
 		return compute_crossing_value(buys, sells)
 
-	result = (min_buy + max_sell) / divisor
+	price_range = min_buy - max_sell
+	result = max_sell + price_range * divider
 
 	logger.debug(f'Computing pool price through MMR... DONE!')
 	return result
 
 
-def compute_pruned_mmr(buys: OffersList, sells: OffersList, divisor=2.0) -> float:
+def compute_pruned_mmr(buys: OffersList, sells: OffersList, divider=0.5) -> float:
 	"""
 	Function to compute the mid-market rate (MMR)
 	using only aggregated offers that are accepted on a community market pool;
-	If the divisor is set to a value different from 2, the function is broadened and should be considered as the more
+	If the divider is set to a value different from 2, the function is broadened and should be considered as the more
 	general intermediary-market rate (IMR);
 	If any of the selling offers has a higher value than any of the buying offers,
 	the pool crossing value is returned instead
 	:param buys: list of buying offers, each with the structure {'origin': str, 'amount': float, 'value': float};
 	amount is given in kWh, value in €/kWh and origin is an identification id, unique to each offer
 	:param sells: same structure but for selling offers
-	:param divisor: the value establishing how close the LEM price is positioned from the least valuable buying offer
-	and the most valuable selling offer; By default, the value is 2.0, making the price equidistant from both offers;
+	:param divider: the value establishing how close the LEM price is positioned from the least valuable buying offer
+	and the most valuable selling offer; By default, the value is 0.5, making the price equidistant from both offers;
 	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
-	Note: must be non-negative and > 0.0
+	Note: must be non-negative and between 0.0 and 1.0
 	:return: calculated price for transactions, in €/kWh
 	"""
 	logger.debug('(Opted for pruned MMR approach)')
 	pruned_buys, pruned_sells = get_accepted_offers(buys, sells)
-	return compute_mmr(pruned_buys, pruned_sells, divisor)
+	return compute_mmr(pruned_buys, pruned_sells, divider)
 
 
 def compute_pruned_sdr(buys: OffersList, sells: OffersList, compensation=0.0) -> float:
@@ -266,6 +267,41 @@ def compute_sdr(buys: OffersList, sells: OffersList, compensation=0.0) -> float:
 
 	logger.debug(f'Computing pool price through SDR... DONE!')
 	return result
+
+
+def compute_pruned_mmr_plus(buys: OffersList, sells: OffersList, divider=0.5) -> (float, OffersList, OffersList):
+	"""
+	Exact same function as "compute_pruned_mmr" but also returns the accepted offers that originated the price
+	:param buys: list of buying offers, each with the structure {'origin': str, 'amount': float, 'value': float};
+	amount is given in kWh, value in €/kWh and origin is an identification id, unique to each offer
+	:param sells: same structure but for selling offers
+	:param divider: the value establishing how close the LEM price is positioned from the least valuable buying offer
+	and the most valuable selling offer; By default, the value is 0.5, making the price equidistant from both offers;
+	Higher values skew the price towards the selling offers and smaller values towards the buying offers.
+	Note: must be non-negative and between 0.0 and 1.0
+	:return: calculated price for transactions, in €/kWh, along with the accepted offers (buy and sell, respectively)
+	that originated the price
+	"""
+	logger.debug('(Opted for pruned MMR approach)')
+	pruned_buys, pruned_sells = get_accepted_offers(buys, sells)
+	price = compute_mmr(pruned_buys, pruned_sells, divider)
+	return price, pruned_buys, pruned_sells
+
+
+def compute_pruned_sdr_plus(buys: OffersList, sells: OffersList, compensation=0.0) -> (float, OffersList, OffersList):
+	"""
+	Exact same function as "compute_pruned_sdr" but also returns the accepted offers that originated the price
+	:param buys: list of buying offers, each with the structure {'origin': str, 'amount': float, 'value': float};
+	amount is given in kWh, value in €/kWh and origin is an identification id, unique to each offer
+	:param sells: same structure but for selling offers
+	:param compensation: float between 0 and 1 that establishes the relative compensation
+	:return:  calculated price for transactions, in €/kWh, along with the accepted offers (buy and sell, respectively)
+	that originated the price
+	"""
+	logger.debug('(Opted for pruned SDR approach)')
+	pruned_buys, pruned_sells = get_accepted_offers(buys, sells)
+	price = compute_sdr(pruned_buys, pruned_sells, compensation)
+	return price, pruned_buys, pruned_sells
 
 
 def do_offers_cross(buys: OffersList, sells: OffersList) -> bool:

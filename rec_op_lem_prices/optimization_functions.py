@@ -34,10 +34,14 @@ from rec_op_lem_prices.custom_types.stage_two_milp_pool_types import (
 )
 from joblib import Parallel, delayed
 from loguru import logger
+from pulp import listSolvers
+
+
+IS_CPLEX_AVAILABLE = "CPLEX_CMD" in listSolvers(onlyAvailable=True)
 
 
 # --- FOR PRE-DELIVERY TIMEFRAME ---------------------------------------------------------------------------------------
-def run_pre_individual_milp(backpack: BackpackS1Dict) \
+def run_pre_individual_milp(backpack: BackpackS1Dict, solver='CBC') \
 		-> OutputsS1Dict:
 	"""
 	Use this function to compute an individual MILP (stage 1) for a given Meter, community member, microgrid or
@@ -76,6 +80,7 @@ def run_pre_individual_milp(backpack: BackpackS1Dict) \
 		'l_sell': an array with the opportunity costs for selling energy to the retailer, in €/kWh
 		'max_p': maximum admissible power at the connection with the grid, in kW (e.g., can be the contracted power)
 	}
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: {
 		'c_ind': float with the individual cost with energy for the optimization horizon, in €;
 			positive values are costs, negative values are profits
@@ -105,7 +110,14 @@ def run_pre_individual_milp(backpack: BackpackS1Dict) \
 	"""
 	logger.info(f'Running a pre-delivery individual MILP ({backpack["id"]})...')
 
-	milp = StageOneMILP(backpack)
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
+
+	milp = StageOneMILP(backpack, solver=valid_solver)
 	milp.solve_milp()
 	results = milp.generate_outputs()
 
@@ -114,7 +126,7 @@ def run_pre_individual_milp(backpack: BackpackS1Dict) \
 	return results
 
 
-def run_pre_single_stage_collective_pool_milp(backpack: SinglePreBackpackS2PoolDict) \
+def run_pre_single_stage_collective_pool_milp(backpack: SinglePreBackpackS2PoolDict, solver='CBC') \
 		-> SinglePreOutputsS2PoolDict:
 	"""
 	Use this function to compute a standalone collective MILP for a given renewable energy community (REC)
@@ -166,6 +178,7 @@ def run_pre_single_stage_collective_pool_milp(backpack: SinglePreBackpackS2PoolD
 			or not; this means that if a meter has surplus and it is injecting in the grid, that surplus must totally
 			shared with all members of the REC
 	}
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: {
 		'c_ind2pool': dict of floats with the individual costs with energy for the optimization horizon, in €;
 			positive values are costs, negative values are profits
@@ -209,7 +222,14 @@ def run_pre_single_stage_collective_pool_milp(backpack: SinglePreBackpackS2PoolD
 	for _, val in backpack['meters'].items():
 		val['c_ind'] = 0.0
 
-	milp = StageTwoMILPPool(backpack)
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
+
+	milp = StageTwoMILPPool(backpack, solver=valid_solver)
 	milp.solve_milp()
 	results = milp.generate_outputs()
 
@@ -218,7 +238,7 @@ def run_pre_single_stage_collective_pool_milp(backpack: SinglePreBackpackS2PoolD
 	return results
 
 
-def run_pre_single_stage_collective_bilateral_milp(backpack: SinglePreBackpackS2BilateralDict) \
+def run_pre_single_stage_collective_bilateral_milp(backpack: SinglePreBackpackS2BilateralDict, solver='CBC') \
 		-> SinglePreOutputsS2BilateralDict:
 	"""
 	Use this function to compute a standalone collective MILP for a given renewable energy community (REC),
@@ -271,6 +291,7 @@ def run_pre_single_stage_collective_bilateral_milp(backpack: SinglePreBackpackS2
 			or not; this means that if a meter has surplus and it is injecting in the grid, that surplus must totally
 			shared with all members of the REC
 	}
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: {
 		'c_ind2bilateral': dict of floats with the individual costs with energy for the optimization horizon, in €;
 			positive values are costs, negative values are profits
@@ -311,12 +332,19 @@ def run_pre_single_stage_collective_bilateral_milp(backpack: SinglePreBackpackS2
 	"""
 	logger.info('Running a pre-delivery standalone/second stage collective (bilateral) MILP...')
 
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
+
 	# Set values for specific run
 	backpack['second_stage'] = False
 	for _, val in backpack['meters'].items():
 		val['c_ind'] = 0.0
 
-	milp = StageTwoMILPBilateral(backpack)
+	milp = StageTwoMILPBilateral(backpack, solver=valid_solver)
 	milp.solve_milp()
 	results = milp.generate_outputs()
 
@@ -325,7 +353,7 @@ def run_pre_single_stage_collective_bilateral_milp(backpack: SinglePreBackpackS2
 	return results
 
 
-def run_pre_two_stage_collective_pool_milp(backpack: CollectivePreBackpackS2PoolDict, for_testing=False) \
+def run_pre_two_stage_collective_pool_milp(backpack: CollectivePreBackpackS2PoolDict, for_testing=False, solver='CBC') \
 		-> CollectivePreOutputsS2PoolDict:
 	"""
 	Use this function to compute the two-step collective MILP for a given renewable energy community (REC)
@@ -339,11 +367,19 @@ def run_pre_two_stage_collective_pool_milp(backpack: CollectivePreBackpackS2Pool
 	(e.g., for a 24h horizon, and a step of 15 minutes or 0.25 hours, the length of the arrays must be 96).
 	:param backpack: the same inputs used for "run_pre_single_stage_collective_pool_milp"
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: a tuple with first, the collective optimization results, as provided in
 		"run_pre_single_stage_collective_pool_milp" and second, a list with the results from the individual
 		optimization stages, as provided in "run_pre_individual_milp".
 	"""
 	logger.info('Running a pre-delivery two-stage collective (pool) MILP...')
+
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
 
 	# Set values for specific run
 	backpack['second_stage'] = True
@@ -370,7 +406,7 @@ def run_pre_two_stage_collective_pool_milp(backpack: CollectivePreBackpackS2Pool
 	# Run in parallel the first stage of optimization for all Meters provided
 	partitions = mp.cpu_count() if not for_testing else 1
 	stage1_outputs = Parallel(n_jobs=partitions, backend='multiprocessing', max_nbytes=None)(
-		delayed(run_pre_individual_milp)(ind_backpack) for ind_backpack in individual_backpacks)
+		delayed(run_pre_individual_milp)(ind_backpack, valid_solver) for ind_backpack in individual_backpacks)
 
 	# Check if all individual stages were successfully run
 	missing_outputs = any(not output for output in stage1_outputs)
@@ -396,7 +432,7 @@ def run_pre_two_stage_collective_pool_milp(backpack: CollectivePreBackpackS2Pool
 		backpack['meters'][meter_id]['c_ind'] = c_ind
 
 	# Run the second stage of optimization
-	milp = StageTwoMILPPool(backpack)
+	milp = StageTwoMILPPool(backpack, solver=valid_solver)
 	milp.solve_milp()
 	stage2_outputs = milp.generate_outputs()
 
@@ -420,7 +456,8 @@ def run_pre_two_stage_collective_pool_milp(backpack: CollectivePreBackpackS2Pool
 	return stage2_outputs, stage1_outputs
 
 
-def run_pre_two_stage_collective_bilateral_milp(backpack: CollectivePreBackpackS2BilateralDict, for_testing=False) \
+def run_pre_two_stage_collective_bilateral_milp(backpack: CollectivePreBackpackS2BilateralDict, for_testing=False,
+												solver='CBC') \
 		-> CollectivePreOutputsS2BilateralDict:
 	"""
 	Use this function to compute the two-step collective MILP for a given renewable energy community (REC)
@@ -434,11 +471,19 @@ def run_pre_two_stage_collective_bilateral_milp(backpack: CollectivePreBackpackS
 	(e.g., for a 24h horizon, and a step of 15 minutes or 0.25 hours, the length of the arrays must be 96).
 	:param backpack: the same inputs used for "run_pre_single_stage_collective_bilateral_milp"
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: a tuple with first, the collective optimization results, as provided in
 		"run_pre_single_stage_collective_bilateral_milp" and second, a list with the results from the individual
 		optimization stages, as provided in "run_pre_individual_milp".
 	"""
 	logger.info('Running a pre-delivery two-stage collective (bilateral) MILP...')
+
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
 
 	# Set values for specific run
 	backpack['second_stage'] = True
@@ -465,7 +510,7 @@ def run_pre_two_stage_collective_bilateral_milp(backpack: CollectivePreBackpackS
 	# Run in parallel the first stage of optimization for all Meters provided
 	partitions = mp.cpu_count() if not for_testing else 1
 	stage1_outputs = Parallel(n_jobs=partitions, backend='multiprocessing', max_nbytes=None)(
-		delayed(run_pre_individual_milp)(ind_backpack) for ind_backpack in individual_backpacks)
+		delayed(run_pre_individual_milp)(ind_backpack, solver) for ind_backpack in individual_backpacks)
 
 	# Check if all individual stages were successfully run
 	missing_outputs = any(not output for output in stage1_outputs)
@@ -491,7 +536,7 @@ def run_pre_two_stage_collective_bilateral_milp(backpack: CollectivePreBackpackS
 		backpack['meters'][meter_id]['c_ind'] = c_ind
 
 	# Run the second stage of optimization
-	milp = StageTwoMILPBilateral(backpack)
+	milp = StageTwoMILPBilateral(backpack, solver=valid_solver)
 	milp.solve_milp()
 	stage2_outputs = milp.generate_outputs()
 
@@ -559,7 +604,7 @@ def run_post_individual_cost(backpack: BackpackIndCostDict) \
 	return results
 
 
-def run_post_single_stage_collective_pool_milp(backpack: SinglePostBackpackS2PoolDict) \
+def run_post_single_stage_collective_pool_milp(backpack: SinglePostBackpackS2PoolDict, solver='CBC') \
 		-> SinglePostOutputsS2PoolDict:
 	"""
 	Use this function to compute a standalone collective MILP for a given renewable energy community (REC)
@@ -596,6 +641,7 @@ def run_post_single_stage_collective_pool_milp(backpack: SinglePostBackpackS2Poo
 			or not; this means that if a meter has surplus and it is injecting in the grid, that surplus must totally
 			shared with all members of the REC
 	}
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: {
 		'c_ind2pool': dict of floats with the individual costs with energy for the optimization horizon, in €;
 			positive values are costs, negative values are profits
@@ -625,13 +671,20 @@ def run_post_single_stage_collective_pool_milp(backpack: SinglePostBackpackS2Poo
 	"""
 	logger.info('Running a post-delivery standalone/second stage collective (pool) MILP...')
 
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
+
 	# Set values for specific run
 	backpack['second_stage'] = False
 	for _, val in backpack['meters'].items():
 		val['c_ind'] = 0.0
 		val['btm_storage'] = {}
 
-	milp = StageTwoMILPPool(backpack)
+	milp = StageTwoMILPPool(backpack, solver=valid_solver)
 	milp.solve_milp()
 	results = milp.generate_outputs()
 
@@ -650,7 +703,7 @@ def run_post_single_stage_collective_pool_milp(backpack: SinglePostBackpackS2Poo
 	return results
 
 
-def run_post_single_stage_collective_bilateral_milp(backpack: SinglePostBackpackS2BilateralDict) \
+def run_post_single_stage_collective_bilateral_milp(backpack: SinglePostBackpackS2BilateralDict, solver='CBC') \
 		-> SinglePostOutputsS2BilateralDict:
 	"""
 	Use this function to compute a standalone collective MILP for a given renewable energy community (REC),
@@ -687,6 +740,7 @@ def run_post_single_stage_collective_bilateral_milp(backpack: SinglePostBackpack
 			or not; this means that if a meter has surplus and it is injecting in the grid, that surplus must totally
 			shared with all members of the REC
 	}
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: {
 		'c_ind2bilateral': dict of floats with the individual costs with energy for the optimization horizon, in €;
 			positive values are costs, negative values are profits
@@ -715,13 +769,20 @@ def run_post_single_stage_collective_bilateral_milp(backpack: SinglePostBackpack
 	"""
 	logger.info('Running a post-delivery standalone/second stage collective (bilateral) MILP...')
 
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
+
 	# Set values for specific run
 	backpack['second_stage'] = False
 	for _, val in backpack['meters'].items():
 		val['c_ind'] = 0.0
 		val['btm_storage'] = {}
 
-	milp = StageTwoMILPBilateral(backpack)
+	milp = StageTwoMILPBilateral(backpack, solver=valid_solver)
 	milp.solve_milp()
 	results = milp.generate_outputs()
 
@@ -740,7 +801,8 @@ def run_post_single_stage_collective_bilateral_milp(backpack: SinglePostBackpack
 	return results
 
 
-def run_post_two_stage_collective_pool_milp(backpack: CollectivePostBackpackS2PoolDict, for_testing=False) \
+def run_post_two_stage_collective_pool_milp(backpack: CollectivePostBackpackS2PoolDict, for_testing=False,
+											solver='CBC') \
 		-> CollectivePostOutputsS2PoolDict:
 	"""
 	Use this function to compute the two-step collective MILP for a given renewable energy community (REC)
@@ -752,11 +814,19 @@ def run_post_two_stage_collective_pool_milp(backpack: CollectivePostBackpackS2Po
 	(e.g., for a 24h horizon, and a step of 15 minutes or 0.25 hours, the length of the arrays must be 96).
 	:param backpack: the same inputs used for "run_post_single_stage_collective_pool_milp"
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: a tuple with first, the collective optimization results, as provided in
 		"run_post_single_stage_collective_pool_milp" and second, a list with the results from the individual
 		cost computations, as provided in "run_post_individual_cost".
 	"""
 	logger.info('Running a post-delivery two-stage collective (pool) MILP...')
+
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
 
 	# Set values for specific run
 	backpack['second_stage'] = True
@@ -792,7 +862,7 @@ def run_post_two_stage_collective_pool_milp(backpack: CollectivePostBackpackS2Po
 		backpack['meters'][meter_id]['c_ind'] = c_ind
 
 	# Run the second stage of optimization
-	milp = StageTwoMILPPool(backpack)
+	milp = StageTwoMILPPool(backpack, solver=valid_solver)
 	milp.solve_milp()
 	stage2_outputs = milp.generate_outputs()
 
@@ -826,7 +896,8 @@ def run_post_two_stage_collective_pool_milp(backpack: CollectivePostBackpackS2Po
 	return stage2_outputs, stage1_outputs
 
 
-def run_post_two_stage_collective_bilateral_milp(backpack: CollectivePostBackpackS2BilateralDict, for_testing=False) \
+def run_post_two_stage_collective_bilateral_milp(backpack: CollectivePostBackpackS2BilateralDict, for_testing=False,
+												 solver='CBC') \
 		-> CollectivePostOutputsS2BilateralDict:
 	"""
 	Use this function to compute the two-step collective MILP for a given renewable energy community (REC)
@@ -838,11 +909,19 @@ def run_post_two_stage_collective_bilateral_milp(backpack: CollectivePostBackpac
 	(e.g., for a 24h horizon, and a step of 15 minutes or 0.25 hours, the length of the arrays must be 96).
 	:param backpack: the same inputs used for "run_post_single_stage_collective_bilateral_milp"
 	:param for_testing: when testing set to True, since parallelization of first stage does not work
+	:param solver: one of "CBC", CPLEX" (other string reverts to "CBC"; if "CPLEX" is not available, reverts to "CBC")
 	:return: a tuple with first, the collective optimization results, as provided in
 		"run_post_single_stage_collective_bilateral_milp" and second, a list with the results from the individual
 		cost computations, as provided in "run_post_individual_cost".
 	"""
 	logger.info('Running a post-delivery two-stage collective (bilateral) MILP...')
+
+	# Validate the solver used
+	if solver == 'CPLEX' and IS_CPLEX_AVAILABLE:
+		valid_solver = 'CPLEX'
+	else:
+		valid_solver = 'CBC'
+	logger.info(f'Solver: {valid_solver}')
 
 	# Set values for specific run
 	backpack['second_stage'] = True
@@ -878,7 +957,7 @@ def run_post_two_stage_collective_bilateral_milp(backpack: CollectivePostBackpac
 		backpack['meters'][meter_id]['c_ind'] = c_ind
 
 	# Run the second stage of optimization
-	milp = StageTwoMILPBilateral(backpack)
+	milp = StageTwoMILPBilateral(backpack, solver=valid_solver)
 	milp.solve_milp()
 	stage2_outputs = milp.generate_outputs()
 

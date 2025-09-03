@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
 	name='rec_op_lem_prices',
 	packages=find_packages(include=['rec_op_lem_prices', 'rec_op_lem_prices.*']),
-	version='0.2.6',
+	version='0.2.7',
 	description='REC Management Tool for optimal operation of REC and LEM price definition.',
 	author='ricardo.emanuel@inesctec.pt',
 	install_requires=[

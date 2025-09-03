@@ -9,7 +9,9 @@ from rec_op_lem_prices.pricing_mechanisms.module.PricingMechanisms import (
 	compute_sdr,
 	do_offers_cross,
 	get_accepted_offers,
-	stop_criterion
+	stop_criterion,
+	compute_pruned_mmr_plus,
+	compute_pruned_sdr_plus
 )
 
 
@@ -36,8 +38,8 @@ def test_compute_mmr():
 	l_p2p = compute_mmr(buy_offers, sell_offers)
 	assert l_p2p == 25.0  # assert the mmr is returned when buying and selling offers are made
 
-	l_p2p = compute_mmr(buy_offers, sell_offers, divisor=3)
-	assert round(l_p2p, 2) == 16.67  # assert the imr is returned when buying and selling offers are made
+	l_p2p = compute_mmr(buy_offers, sell_offers, divider=1/3)
+	assert round(l_p2p, 2) == 21.67  # assert the imr is returned when buying and selling offers are made
 
 	cross_l_p2p = compute_mmr(buy_offers, sell_offers_cross)
 	assert cross_l_p2p == 10.0  # assert the pool's cross value is return when offers cross
@@ -66,8 +68,8 @@ def test_compute_pruned_mmr():
 	l_p2p = compute_pruned_mmr(buy_offers, sell_offers)
 	assert l_p2p == 25.0  # assert the mmr is returned when buying and selling offers are made
 
-	l_p2p = compute_mmr(buy_offers, sell_offers, divisor=3)
-	assert round(l_p2p, 2) == 16.67  # assert the imr is returned when buying and selling offers are made
+	l_p2p = compute_mmr(buy_offers, sell_offers, divider=1/3)
+	assert round(l_p2p, 2) == 21.67  # assert the imr is returned when buying and selling offers are made
 
 	cross_l_p2p = compute_pruned_mmr(buy_offers, sell_offers_cross)
 	assert cross_l_p2p == 22.5  # assert the pool's cross value is return when offers cross
@@ -256,6 +258,36 @@ def test_stop_criterion():
 	assert (stop, round(criterion, 3)) == (True, 0.000)
 
 
+def test_compute_pruned_mmr_plus():
+	buy_offers = [{'origin': 1, 'amount': 500, 'value': 45},
+	              {'origin': 2, 'amount': 500, 'value': 40}]
+	sell_offers = [{'origin': 4, 'amount': -500, 'value': 0},
+				   {'origin': 5, 'amount': -500, 'value': 10},
+				   {'origin': 6, 'amount': -100, 'value': 20}]
+
+	cross_l_p2p, accepted_buy_offers, accepted_sell_offers = compute_pruned_mmr_plus(buy_offers, sell_offers)
+	assert cross_l_p2p == 25.0
+	assert accepted_buy_offers == [{'origin': 1, 'amount': 500, 'value': 45},
+								   {'origin': 2, 'amount': 500, 'value': 40}]
+	assert accepted_sell_offers == [{'origin': 4, 'amount': 500, 'value': 0},
+									{'origin': 5, 'amount': 500, 'value': 10}]
+
+
+def test_compute_pruned_sdr_plus():
+	buy_offers = [{'origin': 1, 'amount': 500, 'value': 45},
+	              {'origin': 2, 'amount': 500, 'value': 40},
+	              {'origin': 3, 'amount': 100, 'value': 35}]
+	sell_offers = [{'origin': 4, 'amount': -500, 'value': 0},
+				   {'origin': 5, 'amount': -500, 'value': 10}]
+
+	cross_l_p2p, accepted_buy_offers, accepted_sell_offers = compute_pruned_sdr_plus(buy_offers, sell_offers)
+	assert cross_l_p2p == 10.0
+	assert accepted_buy_offers == [{'origin': 1, 'amount': 500, 'value': 45},
+								   {'origin': 2, 'amount': 500, 'value': 40}]
+	assert accepted_sell_offers == [{'origin': 4, 'amount': 500, 'value': 0},
+									{'origin': 5, 'amount': 500, 'value': 10}]
+
+
 if __name__ == '__main__':
 	test_compute_mmr()
 	test_compute_pruned_mmr()
@@ -265,3 +297,5 @@ if __name__ == '__main__':
 	test_get_accepted_offers()
 	test_compute_crossing_value()
 	test_stop_criterion()
+	test_compute_pruned_mmr_plus()
+	test_compute_pruned_sdr_plus()
