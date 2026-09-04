@@ -1,5 +1,6 @@
 from rec_op_lem_prices.custom_types.individual_cost_types import OutputsIndCostDict
 from rec_op_lem_prices.custom_types.stage_one_milp_types import OutputsS1Dict
+from rec_op_lem_prices.custom_types.stage_two_milp_pool_types import SinglePostOutputsS2PoolDict, OutputsS2PoolDict
 from rec_op_lem_prices.custom_types.meters_types import (
 	SinglePostMeters,
 	SinglePreMeters,
@@ -12,50 +13,49 @@ from typing import (
 
 
 # -- INPUTS ------------------------------------------------------------------------------------------------------------
-LGridBilateral: TypeAlias = dict[
-	str, dict[
-		str, list[float]
-	]
-]
-
-
-class BaseBackpackS2BilateralDict(TypedDict):
+class BaseBackpackS3PoolDict(TypedDict):
 	delta_t: float
 	horizon: int
 	l_extra: float
-	l_grid: LGridBilateral
+	l_grid: list[float]
 	l_market_buy: list[float]
 	l_market_sell: list[float]
 	strict_pos_coeffs: bool
 	total_share_coeffs: bool
 
 
-class LoopPreBackpackS2BilateralDict(BaseBackpackS2BilateralDict):
+class LoopPreBackpackS3PoolDict(BaseBackpackS3PoolDict):
 	meters: SinglePreMeters
 
 
-class SinglePreBackpackS2BilateralDict(LoopPreBackpackS2BilateralDict):
+DualPreBackpackS3PoolDict: TypeAlias = LoopPreBackpackS3PoolDict
+
+
+class SinglePreBackpackS3PoolDict(LoopPreBackpackS3PoolDict):
 	l_lem: list[float]
 
 
-CollectivePreBackpackS2BilateralDict: TypeAlias = SinglePreBackpackS2BilateralDict
+CollectivePreBackpackS3PoolDict: TypeAlias = SinglePreBackpackS3PoolDict
 
 
-class LoopPostBackpackS2BilateralDict(BaseBackpackS2BilateralDict):
+class LoopPostBackpackS3PoolDict(BaseBackpackS3PoolDict):
 	meters: SinglePostMeters
 
 
-class SinglePostBackpackS2BilateralDict(LoopPostBackpackS2BilateralDict):
+DualPostBackpackS3PoolDict: TypeAlias = LoopPostBackpackS3PoolDict
+
+
+class SinglePostBackpackS3PoolDict(LoopPostBackpackS3PoolDict):
 	l_lem: list[float]
 
 
-CollectivePostBackpackS2BilateralDict: TypeAlias = SinglePostBackpackS2BilateralDict
+CollectivePostBackpackS3PoolDict: TypeAlias = SinglePostBackpackS3PoolDict
 
 
-class BackpackS2BilateralDict(BaseBackpackS2BilateralDict):
+class BackpackS3PoolDict(BaseBackpackS3PoolDict):
 	l_lem: list[float]
 	meters: Meters
-	second_stage: bool
+	third_stage: bool
 
 
 # -- OUTPUTS -----------------------------------------------------------------------------------------------------------
@@ -72,53 +72,56 @@ ListPerIdPerId: TypeAlias = dict[
 ]
 
 
-class SinglePostOutputsS2BilateralDict(TypedDict):
-	c_ind2bilateral: ValuePerId
-	c_ind2bilateral_without_p_extra: ValuePerId
+class SinglePostOutputsS3PoolDict(TypedDict):
+	c_ind3pool: ValuePerId
+	c_ind3pool_without_p_extra: ValuePerId
 	delta_alc: ListPerId
 	delta_cmet: ListPerId
 	delta_coeff: ListPerId
 	delta_slc: ListPerId
 	delta_sup: ListPerId
+	dual_prices: list[float]
 	e_alc: ListPerId
 	e_cmet: ListPerId
 	e_consumed: ListPerId
-	e_pur_bilateral: ListPerIdPerId
-	e_sale_bilateral: ListPerIdPerId
-	e_slc_bilateral: ListPerIdPerId
+	e_pur_pool: ListPerId
+	e_sale_pool: ListPerId
+	e_slc_pool: ListPerId
 	e_sup_market: ListPerId
 	e_sup_retail: ListPerId
 	e_sur_market: ListPerId
 	e_sur_retail: ListPerId
+	e_flex: ListPerId
+	e_gg: ListPerId
+	e_curt: ListPerId
 	milp_status: str
 	obj_value: float
 	p_extra: ListPerId
-	p_extra_cost2bilateral: ValuePerId
+	p_extra_cost3pool: ValuePerId
 
 
-CollectivePostOutputsS2BilateralDict = tuple[
-	SinglePostOutputsS2BilateralDict,
+CollectivePostOutputsS3PoolDict = tuple[
+	SinglePostOutputsS3PoolDict,
+	SinglePostOutputsS2PoolDict,
 	list[OutputsIndCostDict]
 ]
 
 
-class OutputsS2BilateralDict(SinglePostOutputsS2BilateralDict):
-	c_ind2bilateral_without_deg: ValuePerId
-	c_ind2bilateral_without_deg_and_p_extra: ValuePerId
-	deg_cost2bilateral: ValuePerId
+class OutputsS3PoolDict(SinglePostOutputsS3PoolDict):
+	c_ind3pool_without_deg: ValuePerId
+	c_ind3pool_without_deg_and_p_extra: ValuePerId
+	deg_cost3pool: ValuePerId
 	delta_bc: ListPerIdPerId
 	e_bat: ListPerIdPerId
 	e_bc: ListPerIdPerId
 	e_bd: ListPerIdPerId
 	soc_bat: ListPerIdPerId
-	ev_stored: ListPerIdPerId
-	p_ev_charge: ListPerIdPerId
-	p_ev_discharge: ListPerIdPerId
 
 
-SinglePreOutputsS2BilateralDict: TypeAlias = OutputsS2BilateralDict
+SinglePreOutputsS3PoolDict: TypeAlias = OutputsS3PoolDict
 
-CollectivePreOutputsS2BilateralDict = tuple[
-	OutputsS2BilateralDict,
+CollectivePreOutputsS3PoolDict = tuple[
+	OutputsS3PoolDict,
+	OutputsS2PoolDict,
 	list[OutputsS1Dict]
 ]

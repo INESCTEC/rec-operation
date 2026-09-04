@@ -1,0 +1,62 @@
+INPUTS_S1_EVS = {
+		'btm_storage': {
+				'Storage#1': {
+					'degradation_cost': 0.01,
+					'e_bn': 1.0,
+					'eff_bc': 1.0,
+					'eff_bd': 1.0,
+					'init_e': 0.0,
+					'p_max': 1.0,
+					'soc_max': 100.0,
+					'soc_min': 0.0}
+			},
+		'btm_evs': {
+			'EV#1': {
+				'trip_ev': [0, 0.3, 0],
+				'min_energy_storage_ev': .1,
+				'battery_capacity_ev': 1,
+				'eff_bc_ev': 0.99,
+				'eff_bd_ev': 0.99,
+				'init_e_ev': 0.9,
+				'pmax_c_ev': 0.1,
+				'pmax_d_ev': 0.1,
+				'bin_ev': [1, 0, 1]
+			}
+		},
+		'delta_t': 1.0,
+		'e_c': [0.0, 0.5, 0.0],
+		'e_g': [0.9, 0.0, 0.0],
+		'horizon': 3.0,
+		'id': 'Meter#1',
+		'l_buy': [1.0, 2.0, 0.0],
+		'l_extra': 10,
+		'l_market_buy': [2.0, 2.0, 0.0],
+		'l_market_sell': [0.0, 0.0, 1.0],
+		'l_sell': [0.0, 0.0, 0.0],
+		'max_p': 5.0,
+	}
+
+OUTPUTS_S1_EVS = {'meter_id': 'Meter#1',
+              'obj_value': -0.5880099999999999,
+              'milp_status': 'Optimal',
+              'e_sup_retail': [0.0, 0.0, 0.0],
+              'e_sur_retail': [0.0, 0.0, 0.0],
+              'e_sup_market': [0.0, 0.0, 0.0],
+              'e_sur_market': [0.0, 0.0, 0.598],
+              'delta_sup': [0.0, 0.0, 0.0],
+              'e_cmet': [0.0, 0.0, -0.598],
+              'p_extra': [0.0, 0.0, 0.0],
+              'e_bat': {'Storage#1': [0.999, 0.499, 0.0]},
+              'soc_bat': {'Storage#1': [99.9, 49.9, 0.0]},
+              'e_bc': {'Storage#1': [0.999, 0.0, 0.0]},
+              'e_bd': {'Storage#1': [0.0, 0.5, 0.499]},
+              'delta_bc': {'Storage#1': [1.0, 0.0, 0.0]},
+              'ev_stored': {'EV#1': [0.8, 0.5, 0.4]},
+              'p_ev_charge': {'EV#1': [0.0, 0.0, 0.0]},
+              'p_ev_discharge': {'EV#1': [0.099, 0.0, 0.099]},
+              'deg_cost': 0.010,
+              'p_extra_cost': 0.0,
+              'c_ind': -0.5880099999999999,
+              'c_ind_without_deg': -0.598,
+              'c_ind_without_p_extra': -0.5880099999999999,
+              'c_ind_without_deg_and_p_extra': -0.598}

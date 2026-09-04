@@ -1,11 +1,12 @@
 """
-Class for implementing and running the Stage 2 MILP for an energy community.
+Class for implementing and running the Stage 3 MILP for an energy community.
 The implementation is specific to a pool market structure.
 """
 import itertools
 import os
 import re
 import math
+import numpy as np
 
 from rec_op_lem_prices.configs.configs import (
 	MIPGAP,
@@ -19,9 +20,9 @@ from rec_op_lem_prices.optimization.helpers.milp_helpers import (
 	round_up,
 	time_intervals
 )
-from rec_op_lem_prices.custom_types.stage_two_milp_pool_types import (
-	BackpackS2PoolDict,
-	OutputsS2PoolDict
+from rec_op_lem_prices.custom_types.stage_three_milp_pool_types import (
+	BackpackS3PoolDict,
+	OutputsS3PoolDict
 )
 from loguru import logger
 from pulp import (
@@ -40,8 +41,8 @@ from pulp import (
 )
 
 
-class StageTwoMILPPool:
-	def __init__(self, backpack: BackpackS2PoolDict, solver=SOLVER, timeout=TIMEOUT, mipgap=MIPGAP):
+class StageThreeMILPPool:
+	def __init__(self, backpack: BackpackS3PoolDict, solver=SOLVER, timeout=TIMEOUT, mipgap=MIPGAP):
 		# Indices and sets
 		self._horizon = backpack.get('horizon')  # operation period (hours)
 		# Parameters
@@ -52,6 +53,11 @@ class StageTwoMILPPool:
 		self._l_market_sell = backpack.get('l_market_sell')  # market-indexed selling tariff [€/kWh]
 		self._e_c = None  # Meter load profile [kWh]
 		self._e_g = None  # Meter generation [kWh]
+		self._e_cmet_2 = None  # energy meter readings from stage 2 (baseline) [kWh]
+		self._l_flex = backpack.get('l_flex')  # flexibility price  [€/kWh]
+		self._rho_tot = backpack.get('rho_tot')  # tolerance, i.e., allowed deviation from the baseline
+		self._time_series_flex = backpack.get('t_flex')  # hours with flexibility
+		self._time_series_no_flex = backpack.get('t_no_flex')  # hours with no flexibility
 		self._p_meter_max = None  # power flow limit at the Meter [kW]
 		self._eff_bc = {}  # charging efficiency of the batteries [%]
 		self._eff_bd = {}  # discharging efficiency of batteries [%]
@@ -61,7 +67,7 @@ class StageTwoMILPPool:
 		self._soc_max = {}  # maximum state of charge of the batteries [%]
 		self._init_e_bat = {}  # initial energy content of the batteries [kWh]
 		self._deg_cost = {}  # estimated degradation cost of the batteries of n [€/kWh]
-		self._c_ind = None  # objective function values of each Meters' 1st stage MILP solution
+		self._c_ind2 = None  # objective function values of each Meters' 2nd stage MILP solution
 		self._l_grid = backpack.get('l_grid')  # access tariff of the local grid [€/kWh]
 		self._l_lem = backpack.get('l_lem')  # price for LEM transactions [€/kWh]
 		self._big_m = None  # a very big number [kWh]
@@ -88,7 +94,7 @@ class StageTwoMILPPool:
 		self.sets_btm_storage = {}  # stores the Meter's Btm storage assets' ids
 		self.sets_btm_ev = {}  # stores the Meter's Btm EVs ids
 		self._meters_data = backpack.get('meters')  # data from Meters
-		self.second_stage = backpack.get('second_stage')  # indicates if second stage (True) or single stage (False)
+		self.third_stage = backpack.get('third_stage')  # indicates if third stage (True) or single stage (False)
 		self.lem = backpack.get('lem')  # indicates if LEM transactions are allowed (True) or not (False)
 		self.strict_pos_coeffs = backpack.get('strict_pos_coeffs')  # no negative coefficients if True
 		self.total_share_coeffs = backpack.get('total_share_coeffs')  # share all required in the REC if True
@@ -164,7 +170,7 @@ class StageTwoMILPPool:
 		logger.debug(f'-- defining the collective (pool) MILP problem...')
 
 		# Define a minimization MILP
-		self.milp = LpProblem(f'stage2', LpMinimize)
+		self.milp = LpProblem(f'stage3', LpMinimize)
 
 		# Additional temporal variables
 		self.time_intervals = time_intervals(self._horizon, self._delta_t)
@@ -179,12 +185,16 @@ class StageTwoMILPPool:
 		self._l_sell = dict_per_param(self._meters_data, 'l_sell')
 		self._e_c = dict_per_param(self._meters_data, 'e_c')
 		self._e_g = dict_per_param(self._meters_data, 'e_g')
+		self._e_cmet_2 = dict_per_param(self._meters_data, 'e_cmet2')
+		self._rho = dict_per_param(self._meters_data, 'rho')
 		self._p_meter_max = dict_per_param(self._meters_data, 'max_p')
 		self._big_m = 10 * max(self._p_meter_max.values())
-		if self.second_stage:
+		if self.third_stage:
+			self._c_ind2 = dict_per_param(self._meters_data, 'c_ind2')
 			self._c_ind = dict_per_param(self._meters_data, 'c_ind')
 		else:
 			# Unbound the restriction regarding stage 1 cost for single stage runs
+			self._c_ind2 = {k: 1000 for k in self.set_meters}
 			self._c_ind = {k: 1000 for k in self.set_meters}
 
 		# Unpack batteries information
@@ -343,6 +353,12 @@ class StageTwoMILPPool:
 		e_sale = dict_none_lists(self.time_intervals, self.set_meters)
 		# net consumption at meter n [kWh]
 		e_cmet = dict_none_lists(self.time_intervals, self.set_meters)
+		# flexibility provided by n [kWh]
+		e_flex = dict_none_lists(self.time_intervals, self.set_meters)
+		# meter n behind-the-meter generation curtailment [kWh]
+		e_curt = dict_none_lists(self.time_intervals, self.set_meters)
+		# meter n behind-the-meter generation [kWh]
+		e_gg = dict_none_lists(self.time_intervals, self.set_meters)
 		# energy self-consumed by n (in theory, g.t.e. that value)
 		e_slc = dict_none_lists(self.time_intervals, self.set_meters)
 		# consumption at meter n (in theory, g.t.e. that value)
@@ -439,6 +455,9 @@ class StageTwoMILPPool:
 			e_pur[n][t] = LpVariable(f"e_pur_{increment}", lowBound=0, upBound=0 if self.lem is False else None)
 			e_sale[n][t] = LpVariable('e_sale_' + increment, lowBound=0)
 			e_cmet[n][t] = LpVariable('e_cmet_' + increment)
+			e_flex[n][t] = LpVariable('e_flex_' + increment)
+			e_curt[n][t] = LpVariable('e_curt_' + increment, lowBound=0)
+			e_gg[n][t] = LpVariable('e_gg_' + increment, lowBound=0)
 			e_slc[n][t] = LpVariable('e_slc_' + increment, lowBound=0)
 			e_consumed[n][t] = LpVariable('e_consumed_' + increment, lowBound=0)
 			e_alc[n][t] = LpVariable('e_alc_' + increment, lowBound=0)
@@ -518,6 +537,7 @@ class StageTwoMILPPool:
 			lpSum(
 				e_sup_retail[n][t] * self._l_buy[n][t] - e_sur_retail[n][t] * self._l_sell[n][t]
 				+ e_sup_market[n][t] * self._l_market_buy[t] - e_sur_market[n][t] * self._l_market_sell[t]
+				- e_flex[n][t] * self._l_flex[t]
 				+ e_slc[n][t] * self._l_grid[t]
 				+ p_extra[n][t] * self._l_extra
 				+ lpSum(self._deg_cost[n][b] * e_bd[n][b][t] for b in self.sets_btm_storage[n])
@@ -543,6 +563,21 @@ class StageTwoMILPPool:
 				lpSum(e_sale[n][t] for n in self.set_meters) == lpSum(e_pur[n][t] for n in self.set_meters), \
 				'Market_equilibrium_' + increment
 
+			if t in self._time_series_no_flex:
+				# Eq.
+				self.milp += \
+					lpSum(e_cmet[n][t] for n in self.set_meters) <= lpSum(
+						self._e_cmet_2[n][t] for n in self.set_meters) + \
+					self._rho_tot[t], \
+					'rho_plus_' + increment
+
+				# Eq.
+				self.milp += \
+					lpSum(e_cmet[n][t] for n in self.set_meters) >= lpSum(
+						self._e_cmet_2[n][t] for n in self.set_meters) - \
+					self._rho_tot[t], \
+					'rho_minus_' + increment
+
 			if self.total_share_coeffs:
 				# Eq. 32
 				self.milp += \
@@ -567,13 +602,24 @@ class StageTwoMILPPool:
 			# Eq. 13
 			# UPDATED WITH DISAGREGGATED EWH MODULES (ORIGINAL AND OPTIMIZED LOADS)
 			self.milp += \
-				e_cmet[n][t] == self._e_c[n][t] - self._e_g[n][t] \
+				e_cmet[n][t] == self._e_c[n][t] - e_gg[n][t] \
 				+ lpSum(e_bc[n][b][t] - e_bd[n][b][t] for b in self.sets_btm_storage[n]) \
 				+ lpSum(p_ev_charge[n][ev][t] - p_ev_discharge[n][ev][t]
 				 for ev in self.sets_btm_ev[n]) \
 				+ lpSum(- varBackpack[n][e]['original_load'][t] + energyEWH[n][e][t] for e in self.set_ewh[n]) + \
 				lpSum(hvac_power[n][h][t] * self._delta_t for h in self.set_hvac[n]) + lpSum(self.hp_power[n][hp][t]for hp in self.set_hp[n]), \
 				'C_met_' + increment
+
+			# Eq.
+			self.milp += \
+				e_gg[n][t] == self._e_g[n][t] - e_curt[n][t], \
+				'E_curt_' + increment
+
+			if t in self._time_series_flex:
+				# Eq. 38
+				self.milp += \
+					e_flex[n][t] == e_cmet[n][t] - self._e_cmet_2[n][t], \
+					'E_flex_' + increment
 
 			# Eq. 14
 			self.milp += \
@@ -1058,16 +1104,17 @@ class StageTwoMILPPool:
 			self.milp += lpSum(
 				e_sup_retail[n][t] * self._l_buy[n][t] - e_sur_retail[n][t] * self._l_sell[n][t]
 				+ e_sup_market[n][t] * self._l_market_buy[t] - e_sur_market[n][t] * self._l_market_sell[t]
+				- e_flex[n][t] * self._l_flex[t]
 				+ e_slc[n][t] * self._l_grid[t]
 				+ p_extra[n][t] * self._l_extra
 				+ lpSum(self._deg_cost[n][b] * e_bd[n][b][t] for b in self.sets_btm_storage[n])
 				+ (e_pur[n][t] - e_sale[n][t]) * self._l_lem[t]
 				for t in self.time_series
-			) <= round_up(self._c_ind[n]), 'Stage_1_cost_' + increment
+			) <= round_up(self._c_ind[n]), 'Stage_2_cost_' + increment
 
 		# Write MILP to .lp file
 		dir_name = os.path.abspath(os.path.join(__file__, '..'))
-		lp_file = os.path.join(dir_name, f'Stage2Pool.lp')
+		lp_file = os.path.join(dir_name, f'stage3Pool.lp')
 		self.milp.writeLP(lp_file)
 
 		# Set the solver to be called
@@ -1118,7 +1165,7 @@ class StageTwoMILPPool:
 
 		return
 
-	def generate_outputs(self) -> OutputsS2PoolDict:
+	def generate_outputs(self) -> OutputsS3PoolDict:
 		"""
 		Function for generating the outputs of optimization, namely the battery's set points.
 		:return: outputs dictionary with MILP variables' and other computed values
@@ -1142,6 +1189,11 @@ class StageTwoMILPPool:
 		outputs['e_pur_pool'] = dict_none_lists(self.time_intervals, self.set_meters)
 		outputs['e_sale_pool'] = dict_none_lists(self.time_intervals, self.set_meters)
 		outputs['e_cmet'] = dict_none_lists(self.time_intervals, self.set_meters)
+		outputs['e_flex'] = dict_none_lists(self.time_intervals, self.set_meters)
+		for key in outputs['e_flex']: # change nan to 0
+			outputs['e_flex'][key] = [0 if isinstance(x, float) and np.isnan(x) else x for x in outputs['e_flex'][key]]
+		outputs['e_gg'] = dict_none_lists(self.time_intervals, self.set_meters)
+		outputs['e_curt'] = dict_none_lists(self.time_intervals, self.set_meters)
 		outputs['e_slc_pool'] = dict_none_lists(self.time_intervals, self.set_meters)
 		outputs['e_consumed'] = dict_none_lists(self.time_intervals, self.set_meters)
 		outputs['e_alc'] = dict_none_lists(self.time_intervals, self.set_meters)
@@ -1274,6 +1326,15 @@ class StageTwoMILPPool:
 			elif re.search(f'e_cmet_', v.name):
 				n = original_n_name(v.name)
 				outputs['e_cmet'][n][step_nr] = v.varValue
+			elif re.search(f'e_flex_', v.name):
+				n = original_n_name(v.name)
+				outputs['e_flex'][n][step_nr] = v.varValue
+			elif re.search(f'e_gg_', v.name):
+				n = original_n_name(v.name)
+				outputs['e_gg'][n][step_nr] = v.varValue
+			elif re.search(f'e_curt_', v.name):
+				n = original_n_name(v.name)
+				outputs['e_curt'][n][step_nr] = v.varValue
 			elif re.search(f'e_slc_', v.name):
 				n = original_n_name(v.name)
 				outputs['e_slc_pool'][n][step_nr] = v.varValue
@@ -1390,40 +1451,40 @@ class StageTwoMILPPool:
 				outputs['hp_outlet_temp'][n][hp][step_nr] = v.varValue
 
 		# Include other individual cost metrics
-		outputs['c_ind2pool'] = {n: None for n in self.set_meters}
-		outputs['c_ind2pool_without_deg'] = {n: None for n in self.set_meters}
-		outputs['c_ind2pool_without_deg_and_p_extra'] = {n: None for n in self.set_meters}
-		outputs['c_ind2pool_without_p_extra'] = {n: None for n in self.set_meters}
-		outputs['deg_cost2pool'] = {n: None for n in self.set_meters}
-		outputs['p_extra_cost2pool'] = {n: None for n in self.set_meters}
+		outputs['c_ind3pool'] = {n: None for n in self.set_meters}
+		outputs['c_ind3pool_without_deg'] = {n: None for n in self.set_meters}
+		outputs['c_ind3pool_without_deg_and_p_extra'] = {n: None for n in self.set_meters}
+		outputs['c_ind3pool_without_p_extra'] = {n: None for n in self.set_meters}
+		outputs['deg_cost3pool'] = {n: None for n in self.set_meters}
+		outputs['p_extra_cost3pool'] = {n: None for n in self.set_meters}
 
-		# Calculate the individual costs found on stage 2
+		# Calculate the individual costs found on stage 3
 		rematchd = {v: k for k, v in matchd.items()}
-		constraints = [self.milp.constraints[c] for c in self.milp.constraints if c.startswith('Stage_1_cost_')]
+		constraints = [self.milp.constraints[c] for c in self.milp.constraints if c.startswith('Stage_2_cost_')]
 		for constraint in constraints:
 			# Calculate the cost that came from overstepping the maximum Meter power limit
-			n = rematchd[constraint.name.split('Stage_1_cost_')[-1]]
+			n = rematchd[constraint.name.split('Stage_2_cost_')[-1]]
 			p_extra = sum(outputs['p_extra'][n])
 			p_extra_cost = p_extra * self._l_extra
-			outputs['p_extra_cost2pool'][n] = p_extra_cost
+			outputs['p_extra_cost3pool'][n] = p_extra_cost
 
 			# Calculate the cost of degradation
 			deg_cost = 0
 			for b, t in itertools.product(self.sets_btm_storage[n], self.time_series):
 				deg_cost += self._deg_cost[n][b] * outputs['e_bd'][n][b][t]
-			outputs['deg_cost2pool'][n] = deg_cost
+			outputs['deg_cost3pool'][n] = deg_cost
 
-			# Retrieve the cost with energy of each Meter obtained in Stage 2
+			# Retrieve the cost with energy of each Meter obtained in Stage 3
 			constraint_sum = 0
 			for var, coefficient in constraint.items():
 				constraint_sum += var.varValue * coefficient
 			constraint_sum += constraint.constant + self._c_ind[n]
-			outputs['c_ind2pool'][n] = constraint_sum
+			outputs['c_ind3pool'][n] = constraint_sum
 
 			# Calculate additional terms that do not consider the cost of degradation and/or extra power at Meter:
-			outputs['c_ind2pool_without_deg'][n] = outputs['c_ind2pool'][n] - deg_cost
-			outputs['c_ind2pool_without_p_extra'][n] = outputs['c_ind2pool'][n] - p_extra_cost
-			outputs['c_ind2pool_without_deg_and_p_extra'][n] = outputs['c_ind2pool'][n] - deg_cost - p_extra_cost
+			outputs['c_ind3pool_without_deg'][n] = outputs['c_ind3pool'][n] - deg_cost
+			outputs['c_ind3pool_without_p_extra'][n] = outputs['c_ind3pool'][n] - p_extra_cost
+			outputs['c_ind3pool_without_deg_and_p_extra'][n] = outputs['c_ind3pool'][n] - deg_cost - p_extra_cost
 
 		# Also retrieve the slack values of the "Market Equilibrium" constraints. These can be considered as the
 		# "optimal" market prices whenever "Stage_1_cost_" constraints are not active, otherwise they are 0.

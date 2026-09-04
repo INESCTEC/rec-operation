@@ -111,6 +111,9 @@ class OutputsS2PoolDict(SinglePostOutputsS2PoolDict):
 	e_bc: ListPerIdPerId
 	e_bd: ListPerIdPerId
 	soc_bat: ListPerIdPerId
+	ev_stored: ListPerIdPerId
+	p_ev_charge: ListPerIdPerId
+	p_ev_discharge: ListPerIdPerId
 
 
 SinglePreOutputsS2PoolDict: TypeAlias = OutputsS2PoolDict

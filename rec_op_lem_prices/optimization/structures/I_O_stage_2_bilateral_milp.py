@@ -111,6 +111,8 @@ SINGLE_PRE_INPUTS_S2_BILATERAL = {
 					'soc_max': 100.0,
 					'soc_min': 0.0}
 			},
+			'btm_evs': None,
+			'ewh': None,
 			'e_c': [0.0, 0.5, 0.0],
 			'e_g': [0.9, 0.0, 0.0],
 			'l_buy': [2.0, 2.0, 2.0],
@@ -119,6 +121,8 @@ SINGLE_PRE_INPUTS_S2_BILATERAL = {
 		},
 		'Meter#2': {
 			'btm_storage': None,
+			'btm_evs': None,
+			'ewh': None,
 			'e_c': [0.1, 0.1, 0.1],
 			'e_g': [0.0, 0.0, 0.0],
 			'l_buy': [2.0, 2.0, 2.0],

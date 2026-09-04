@@ -1,4 +1,5 @@
 from rec_op_lem_prices.custom_types.btm_storage_types import BtmStorage
+from rec_op_lem_prices.custom_types.btm_evs_types import Btmevs
 from typing import (
 	TypeAlias,
 	TypedDict,
@@ -16,6 +17,7 @@ class SinglePostMeter(TypedDict):
 
 class SinglePreMeter(SinglePostMeter):
 	btm_storage: Union[BtmStorage, None]
+	btm_evs: Union[Btmevs, None]
 
 
 class SingleMeter(SinglePreMeter):

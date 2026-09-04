@@ -3,6 +3,7 @@ from rec_op_lem_prices.optimization_functions import (
 	run_pre_single_stage_collective_pool_milp,
 	run_pre_single_stage_collective_bilateral_milp,
 	run_pre_two_stage_collective_pool_milp,
+	run_pre_three_stage_collective_pool_milp,
 	run_pre_two_stage_collective_bilateral_milp,
 	run_post_individual_cost,
 	run_post_single_stage_collective_pool_milp,
@@ -37,6 +38,10 @@ from rec_op_lem_prices.optimization.structures.I_O_stage_2_pool_milp import (
 	SINGLE_POST_OUTPUTS_S2_POOL,
 	SINGLE_PRE_INPUTS_S2_POOL,
 	SINGLE_PRE_OUTPUTS_S2_POOL
+)
+from rec_op_lem_prices.optimization.structures.I_O_stage_3_pool_milp import (
+	COLLECTIVE_PRE_INPUTS_S3_POOL,
+	COLLECTIVE_PRE_OUTPUTS_S3_POOL
 )
 
 
@@ -82,6 +87,22 @@ def test_run_pre_two_stage_collective_pool_milp():
 	for idx, r1 in enumerate(r1_list):
 		for ki, valu in r1.items():
 			assert valu == COLLECTIVE_PRE_OUTPUTS_S2_POOL[1][idx].get(ki), f'{ki}'
+
+
+def test_run_pre_three_stage_collective_pool_milp():
+	r3, r2, r1_list = run_pre_three_stage_collective_pool_milp(COLLECTIVE_PRE_INPUTS_S3_POOL, for_testing=True)
+	round_cost = lambda x: {meter_id: round(cost, 3) for meter_id, cost in x.items()}
+	r3['c_ind3pool'] = round_cost(r3['c_ind3pool'])
+	r3['c_ind3pool_without_deg'] = round_cost(r3['c_ind3pool_without_deg'])
+	r3['c_ind3pool_without_deg_and_p_extra'] = round_cost(r3['c_ind3pool_without_deg_and_p_extra'])
+	r3['c_ind3pool_without_p_extra'] = round_cost(r3['c_ind3pool_without_p_extra'])
+	for ki, valu in r3.items():
+		assert valu == COLLECTIVE_PRE_OUTPUTS_S3_POOL[0].get(ki), f'{ki}'
+	for ki, valu in r2.items():
+		assert valu == COLLECTIVE_PRE_OUTPUTS_S3_POOL[1].get(ki), f'{ki}'
+	for idx, r1 in enumerate(r1_list):
+		for ki, valu in r1.items():
+			assert valu == COLLECTIVE_PRE_OUTPUTS_S3_POOL[2][idx].get(ki), f'{ki}'
 
 
 def test_run_pre_two_stage_collective_bilateral_milp():
@@ -162,6 +183,7 @@ if __name__ == '__main__':
 	test_run_pre_single_stage_collective_bilateral_milp()
 	test_run_pre_two_stage_collective_pool_milp()
 	test_run_pre_two_stage_collective_bilateral_milp()
+	test_run_pre_three_stage_collective_pool_milp()
 	test_run_post_individual_cost()
 	test_run_post_single_stage_collective_pool_milp()
 	test_run_post_single_stage_collective_bilateral_milp()

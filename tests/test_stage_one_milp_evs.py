@@ -1,0 +1,23 @@
+from rec_op_lem_prices.optimization.module.StageOneMILP import StageOneMILP
+from rec_op_lem_prices.optimization.structures.I_O_stage_1_milp_evs import (
+	INPUTS_S1_EVS,
+	OUTPUTS_S1_EVS
+)
+
+def test_solve_individual_milp():
+	# Assert the creation of a correct class
+	milp = StageOneMILP(INPUTS_S1_EVS)
+	assert isinstance(milp, StageOneMILP)
+
+	# Assert the MILP is optimally solved
+	milp.solve_milp()
+	assert milp.status == 'Optimal'
+
+	# Assert the correct ouputs
+	results = milp.generate_outputs()
+	results['deg_cost'] = round(results['deg_cost'], 3)
+	for ki, valu in results.items():
+		assert valu == OUTPUTS_S1_EVS.get(ki), f'{ki}'
+
+if __name__ == '__main__':
+	test_solve_individual_milp()

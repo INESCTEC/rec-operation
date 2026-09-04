@@ -1,4 +1,5 @@
 from rec_op_lem_prices.custom_types.btm_storage_types import BtmStorage
+from rec_op_lem_prices.custom_types.btm_evs_types import Btmevs
 from typing import (
 	TypeAlias,
 	TypedDict
@@ -7,18 +8,19 @@ from typing import (
 
 # -- INPUTS ------------------------------------------------------------------------------------------------------------
 class BackpackS1Dict(TypedDict):
-	btm_storage: BtmStorage
-	delta_t: float
-	e_c: list[float]
-	e_g: list[float]
-	horizon: int
-	id: str
-	l_buy: list[float]
-	l_extra: float
-	l_market_buy: list[float]
-	l_market_sell: list[float]
-	l_sell: list[float]
-	max_p: float
+		btm_storage: BtmStorage
+		btm_evs: Btmevs
+		delta_t: float
+		e_c: list[float]
+		e_g: list[float]
+		horizon: int
+		id: str
+		l_buy: list[float]
+		l_extra: float
+		l_market_buy: list[float]
+		l_market_sell: list[float]
+		l_sell: list[float]
+		max_p: float
 
 
 # -- OUTPUTS -----------------------------------------------------------------------------------------------------------
@@ -26,6 +28,9 @@ BtmStorageOutputsDict: TypeAlias = dict[
 	str, list[float]
 ]
 
+BtmEVsOutputsDict: TypeAlias = dict[
+	str, list[float]
+]
 
 class OutputsS1Dict(TypedDict):
 	c_ind: float
@@ -49,3 +54,6 @@ class OutputsS1Dict(TypedDict):
 	p_extra: list[float]
 	p_extra_cost: float
 	soc_bat: BtmStorageOutputsDict
+	ev_stored: BtmEVsOutputsDict
+	p_ev_charge: BtmEVsOutputsDict
+	p_ev_discharge: BtmEVsOutputsDict
