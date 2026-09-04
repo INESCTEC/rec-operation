@@ -1,11 +1,16 @@
-![alt text](figures/logo_Enershare.png)
+<p align="center">
+  <img src="figures/logo_Enershare.png" height="100" alt="Enershare logo">
+  &nbsp;&nbsp;&nbsp;
+  <img src="figures/logo_ENPOWER.png" height="100" alt="ENPOWER logo">
+</p>
+
 ```
-  _____   ______  _____    ____                            _    _                 _____   ______   _____  _______             _____  _____ 
- |  __ \ |  ____|/ ____|  / __ \                          | |  (_)               |  __ \ |  ____| / ____||__   __|     /\    |  __ \|_   _|
- | |__) || |__  | |      | |  | | _ __    ___  _ __  __ _ | |_  _   ___   _ __   | |__) || |__   | (___     | |       /  \   | |__) | | |  
- |  _  / |  __| | |      | |  | || '_ \  / _ \| '__|/ _` || __|| | / _ \ | '_ \  |  _  / |  __|   \___ \    | |      / /\ \  |  ___/  | |  
- | | \ \ | |____| |____  | |__| || |_) ||  __/| |  | (_| || |_ | || (_) || | | | | | \ \ | |____  ____) |   | |     / ____ \ | |     _| |_ 
- |_|  \_\|______|\_____|  \____/ | .__/  \___||_|   \__,_| \__||_| \___/ |_| |_| |_|  \_\|______||_____/    |_|    /_/    \_\|_|    |_____|
+  _____   ______  _____    ____                            _    _                 
+ |  __ \ |  ____|/ ____|  / __ \                          | |  (_)               
+ | |__) || |__  | |      | |  | | _ __    ___  _ __  __ _ | |_  _   ___   _ __   
+ |  _  / |  __| | |      | |  | || '_ \  / _ \| '__|/ _` || __|| | / _ \ | '_ \  
+ | | \ \ | |____| |____  | |__| || |_) ||  __/| |  | (_| || |_ | || (_) || | | | 
+ |_|  \_\|______|\_____|  \____/ | .__/  \___||_|   \__,_| \__||_| \___/ |_| |_| 
                                  | |                                                                                                       
                                  |_|
 ```
@@ -13,7 +18,7 @@
 # Documentation
 
 The *Community Market Pool* use case aims to provide **optimal local energy market (LEM) prices** for Renewable Energy
-Communities (REC) under the *Enershare* project. To this end, various mechanisms and algorithms are provided for
+Communities (REC) under the *Enershare* and *ENPOWER* projects. To this end, various mechanisms and algorithms are provided for
 calculating these prices. The optimality of the price arrays computed depends on the architecture of the REC, 
 the assets of its members and their energy supply contracts with their suppliers, but it is always measured 
 by its ability to promote internal transactions as opposed to buying or selling energy from traders.
@@ -22,7 +27,7 @@ To that end, a library was implemented, named ***rec_op_lem_prices***
 (**R**enewable **E**nergy **C**ommunities **Op**eration and **L**ocal **E**nergy **M**arket **Pricing**), 
 that provides the user with two sets of functions:
 - ***optimization_functions***, which include calls to a MILP module for individual and collective optimal management of 
-REC with stationary storage, PV generation and inflexible loads (all assets are assumed to be *behind-the-meter*)
+REC with stationary storage, PV generation and loads (all assets are assumed to be *behind-the-meter*)
 
 
 - ***pricing_mechanisms_functions***, which include several algorithms for defining LEM prices for a particular 
@@ -35,7 +40,11 @@ presented with a variety of possibilites, namely:
 - make an individual optimization of the assets of any member of the REC,
 - make a collective optimization of the assets of all members of the REC,
 - make the same collective optimization but guaranteeing that the cost of each member is not penalized by participating 
-in the REC
+in the REC,
+- make a three-stage collective optimization that, on top of the previous stage, also determines the amount of 
+flexibility (from the flexible loads and BESS scheduled in the previous stages) that the REC is willing to provide 
+for a given flexibility price, enabling the computation of a REC-level bidding curve and the activation of a 
+previously submitted flexibility bid
 
 LEM prices can be computed through several pricing mechanisms and may require the computation of collective optimization 
 MILP. It is also important to define the timeframe for which the prices are being computed, since they can be used to 
@@ -82,6 +91,23 @@ forecast data.
 - Stationary batteries are modelled following a simple "bucket" model which is 
 technology-agnostic.
 
+## Flexible loads (ENPOWER)
+Under the *ENPOWER* project, the optimization module was extended to also schedule **behind-the-meter flexible loads**, 
+alongside stationary batteries, as controllable assets of a REC member:
+
+- **Electric water heaters (EWH)**, modelled through a thermal tank model that optimizes the heating schedule while 
+respecting hot water draw profiles and temperature comfort bounds
+- **Electric vehicles (EVs)**, modelled with charging (and discharging, for V2G) schedules constrained by trip 
+patterns, battery capacity and charging/discharging power limits
+- **HVAC systems**, modelled as a thermostatic load constrained by indoor temperature comfort bounds and rated 
+power/efficiency
+- **Heat pumps (HP)**, modelled with a coupled domestic hot water tank and space heating (radiator) thermal model, 
+constrained by comfort bounds on indoor and outlet water temperatures
+
+These flexible loads can be included in the individual and collective MILP formulations (both *pool* and *bilateral* 
+LEM structures), and a new three-stage collective *pool* MILP was also added, enabling the computation of bidding 
+curves and flexibility activation for a REC.
+
 ## Main optimization functions overview
 Under ```rec_management_tools.optimization_functions``` the user can find:
 
@@ -101,6 +127,19 @@ operation costs with energy are fed into the collective MILP stage as constraint
 
 ```run_pre_two_stage_collective_bilateral_milp``` 
 - run the two-stage collective pre-delivery MILP, considering a *bilateral* LEM structure
+
+```run_pre_three_stage_collective_pool_milp``` 
+- run the three-stage collective pre-delivery MILP, considering a *pool* LEM structure; on top of the two-stage MILP, 
+this stage also determines the amount of flexibility the REC is willing to provide for a given flexibility price
+
+```run_bidding_curve``` 
+- similar to ```run_pre_three_stage_collective_pool_milp```, but runs the third stage multiple times for a range of 
+flexibility prices (from an initial to a final price, with a given increment), returning the resulting REC-level 
+bidding curve
+
+```bid_activation``` 
+- run the third stage for a previously submitted flexibility bid (given its flexibility price and the flexibility 
+amount to be activated), returning the corresponding schedules
 
 ```run_post_individual_cost``` 
 - run a post-delivery individual MILP, for a single REC member
