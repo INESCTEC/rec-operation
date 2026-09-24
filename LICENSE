@@ -1,40 +1,8 @@
-Copyright (C) [2023], INESC TEC 
+Copyright (C) 2023–2026 INESC TEC and contributors
 
-ENERSHARE – REC Operation Library: A Python library for computing local energy market (LEM) prices for a Renewable
-Energy Community (REC) that can promote the minimization of the members’ operation cost with energy.
+This software is licensed under the GNU Affero General Public License version 3 (AGPL-3.0).
 
-This software is authored by:
-Ricardo Emanuel Gomes Fernandes da Silva
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
-License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-version.
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-details.
-You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
-<https://www.gnu.org/licenses/>.
-
-This program makes use and is distributed with the following libraries:
-* joblib: (https://github.com/joblib/joblib)
-* loguru: (https://github.com/Delgan/loguru)
-* numpy: (https://github.com/numpy/numpy)
-* pandas: (https://github.com/pandas-dev/pandas)
-* pulp: (https://github.com/coin-or/pulp)
-* pytest: (https://github.com/pytest-dev/pytest)
-
-A commercial license is also available for use in industrial projects and collaborations that do not wish to use the
-AGPL v3 license.
-To obtain the commercial license please contact the INESC TEC Technology Licensing Office (TLO) at info.sal@inesctec.pt,
-or
-Campus da Faculdade de Engenharia da Universidade do Porto
-Rua Dr. Roberto Frias
-4200-465 Porto
-Portugal
-
-If needed SAL (INESC TEC Technology Licensing Office - TLO) can assist with all the legal details regarding the
-licensing agreement
-
+A commercial licence is also available for uses that are not compatible with the terms of the AGPL-3.0. For commercial licensing, please contact: tto@inesctec.pt
 ________________________________________
 GNU AFFERO GENERAL PUBLIC LICENSE
 
